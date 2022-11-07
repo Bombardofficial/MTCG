@@ -1,5 +1,8 @@
 package com.example.mtcg;
 
+import com.example.mtcg.card.Deck;
+import com.example.mtcg.card.Stack;
+
 public class User {
 
     private String username;
@@ -69,9 +72,8 @@ public class User {
         eloCalculator(opponent_elo , 0.5);
     }
 
-    public void buyPackage() {
-        this.coins -= 5;
+
+    public void pays(int coins) {
+        this.coins -= coins;
     }
-
-
 }

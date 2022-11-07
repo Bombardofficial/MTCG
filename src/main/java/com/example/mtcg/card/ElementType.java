@@ -33,6 +33,7 @@ public enum ElementType {
 
     public static int generateDamage(){
 
+
         return random.nextInt(90)+1;
 
     }

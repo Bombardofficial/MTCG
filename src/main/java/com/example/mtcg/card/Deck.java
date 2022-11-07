@@ -1,6 +1,7 @@
 package com.example.mtcg.card;
 
 import java.util.LinkedList;
+import java.util.List;
 
 import java.util.Random;
 
@@ -8,7 +9,7 @@ public class Deck {
 
     private int Cards;
 
-    private LinkedList<Card> deck;
+    private List<Card> deck; //interfaceben hozzam be, ne itt dekraráljam explicit módon
 
     Random random = new Random();
 

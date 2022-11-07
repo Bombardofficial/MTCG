@@ -1,13 +1,20 @@
 @startuml
 'https://plantuml.com/class-diagram
-MonsterType <|.. Card: uses
-ElementType <|.. Card: uses
-Deck <-- User: has
-Card <-- User: needs
-Stack <-- User: has
-CardType <|.. Card: uses
-MonsterCard -- Card: inherits (child class)
-SpellCard -- Card: inherits (child class)
+MonsterType <-- Card: D.A
+ElementType <-- Card: D.A.
+User *-- Deck: Composition
+Card <-- User: Directed A.
+User *-- Stack: Composition
+Stack o-- Card: Aggregation
+CardType <.. Card: Dependency
+Card <|-- MonsterCard: inherits (child class)
+SpellCard -- (Card,MonsterCard): inherits (child class)
+Deck o-- Card: Aggregation
+Deck "1...4"-- "1" Stack
+Market .. User
+Store .. User
+Battle .. "2" User
+
 
 class User {
 
@@ -28,6 +35,20 @@ class User {
 
 }
 
+class Market {
+
+    -packages: Package[]
+
+    +buyPackage(): void
+
+
+}
+class Store {
+    -cards: Card[]
+
+    +buyCard(): void
+    +sellCard(): void
+}
 class Deck {
 
     -Deck: LinkedList<Card>
@@ -84,7 +105,7 @@ enum MonsterType {
 
 }
 
-class Battle(){
+class Battle{
 
 
 }

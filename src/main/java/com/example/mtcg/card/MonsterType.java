@@ -4,7 +4,7 @@ import java.util.Random;
 
 public enum MonsterType {
 
-    GOBLIN, DRAGON, WIZARD, ORK, KNIGHT, KRAKEN, ELVE, TROLL, NORMAL;
+    GOBLIN, DRAGON, WIZARD, ORK, KNIGHT, KRAKEN, ELVE, TROLL, NORMAL, SPELL;
 
     static Random random = new Random();
 
