@@ -7,7 +7,7 @@ public enum ElementType {
     FIRE,WATER,NORMAL;
 
 
-    static Random random = new Random();
+    static final Random random = new Random();
 
 
     public static ElementType generateElement() {

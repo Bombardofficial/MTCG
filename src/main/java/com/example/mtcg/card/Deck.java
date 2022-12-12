@@ -1,15 +1,17 @@
 package com.example.mtcg.card;
 
+import lombok.Getter;
+import lombok.Setter;
 import java.util.LinkedList;
 import java.util.List;
 
 import java.util.Random;
-
+@Getter
 public class Deck {
 
-    private int Cards;
+    private final int Cards;
 
-    private List<Card> deck; //interfaceben hozzam be, ne itt dekraráljam explicit módon
+    private final LinkedList<Card> deck; //interfaceben hozzam be, ne itt dekraráljam explicit módon
 
     Random random = new Random();
 
@@ -22,12 +24,20 @@ public class Deck {
 
     public Card randomCard(){
         int randomPosition = random.nextInt(this.deck.size());
-        Card randomCard = this.deck.get(randomPosition);
-        return randomCard;
+        return this.deck.get(randomPosition);
     }
 
 
+    public int Size() {
+        return this.deck.size();
+    }
 
+    public void removeFirst() {
+        this.deck.removeFirst();
 
+    }
 
+    public void add(Card c1) {
+        this.deck.add(c1);
+    }
 }
