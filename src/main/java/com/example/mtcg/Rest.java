@@ -14,4 +14,6 @@ public interface Rest<T> {
     T deleting(int i) throws SQLException;
     T getById(int i) throws SQLException;
     T generateCard(int id) throws SQLException;
+    T login(String username, String password) throws SQLException;
+    //T createPackage(int id) throws SQLException;
 }

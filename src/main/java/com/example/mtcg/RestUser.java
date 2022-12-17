@@ -1,6 +1,7 @@
 package com.example.mtcg;
 
 import com.example.mtcg.card.Card;
+import org.mindrot.jbcrypt.BCrypt;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -20,7 +21,9 @@ public class RestUser implements Rest<User> {
     private final PreparedStatement updateDeck;
 
     private final PreparedStatement uploadCards;
-
+    private final PreparedStatement checkUser;
+    private final PreparedStatement createCardforPackage;
+    private final PreparedStatement sendCardstoPackage;
     public RestUser(Connection conn) throws SQLException {
         this.conn = conn;
         this.getAll = conn.prepareStatement("SELECT * FROM users");
@@ -30,6 +33,9 @@ public class RestUser implements Rest<User> {
         this.deleting = conn.prepareStatement("DELETE FROM users WHERE id = ?");
         this.updateDeck = conn.prepareStatement("UPDATE cards SET in_deck = false WHERE user_id = ?");
         this.uploadCards = conn.prepareStatement("INSERT INTO cards (user_id, in_deck, name, damage, element, type) VALUES (?, ?, ?, ?, ?, ?)");
+        this.checkUser = conn.prepareStatement("SELECT * FROM users WHERE username = ?");
+        this.createCardforPackage = conn.prepareStatement("INSERT INTO cards (idx, name, damage) VALUES (?, ?, ?)");
+        this.sendCardstoPackage = conn.prepareStatement("INSERT INTO packages (user_id, card_id) VALUES (?, ?)");
     }
 
     @Override
@@ -115,5 +121,58 @@ public class RestUser implements Rest<User> {
         }
         return user;
     }
+
+    @Override
+    public User login(String username, String password) throws SQLException {
+        this.checkUser.setString(1, username);
+        ResultSet rs = this.checkUser.executeQuery();
+        if(rs.next()) {
+            String hashedPassword = rs.getString("password");
+            if(BCrypt.checkpw(password, hashedPassword)) {
+                System.out.println("Login successful!");
+                return makeOne(rs);
+            }
+            else {
+                System.out.println("Wrong password!");
+                return null;
+            }
+
+        }
+
+        return null;
+    }
+/*
+    @Override
+    public User createPackage(int id) throws SQLException {
+        User user = get(id);
+
+        for(int i = 0; i < 5; i++) {
+            Card card = get(id);
+            this.createCardforPackage.setInt(1, id);
+            this.createCardforPackage.setString(2, card.getName());
+            this.createCardforPackage.setInt(3, card.getDamage());
+            this.createCardforPackage.executeUpdate();
+
+        }
+        //set values for package
+
+
+        return null;
+    }
+*/
+    public boolean checkUser(User user) {
+        try {
+            this.checkUser.setString(1, user.getUsername());
+            ResultSet rs = this.checkUser.executeQuery();
+            if (rs.next()) {
+                return true;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+
 }
 

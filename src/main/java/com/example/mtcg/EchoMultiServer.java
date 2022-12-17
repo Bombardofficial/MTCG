@@ -3,28 +3,17 @@ package com.example.mtcg;
 //import org.slf4j.LoggerFactory;
 
 
-import com.example.mtcg.card.Card;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.mindrot.jbcrypt.BCrypt;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Base64;
-import javax.crypto.Cipher;
-import javax.crypto.KeyGenerator;
-
-import javax.crypto.SecretKey;
 
 public class EchoMultiServer {
 
@@ -32,7 +21,7 @@ public class EchoMultiServer {
 
     private ServerSocket serverSocket;
 
-    static Cipher cipher;
+
 
     public void start(int port) {
         try {
@@ -133,7 +122,42 @@ public class EchoMultiServer {
                         out.println();
                         break;
 
-                    } else if (elsoSorDarabok[1].startsWith("/users")) {
+                    } else if (elsoSorDarabok[1].startsWith("/sessions")) {
+                        String userJson = getRequestBody(in);
+                        User user = objectMapper.readValue(userJson, User.class);
+                        User authUser = restUser.login(user.getUsername(), user.getPassword());
+                        if (authUser != null) {
+                            out.println("HTTP/1.1 200 OK");
+                            out.println("Content-Type: text/plain");
+                            out.println("Connection: close");
+                            out.println("");
+                            out.println(authUser.getUsername()+"-mtcgToken");
+                            out.println();
+                        } else {
+                            out.println("HTTP/1.1 401 Unauthorized");
+                            out.println("Content-Type: text/html");
+                            out.println("");
+                            out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
+                        }
+                        break;
+
+
+                    }
+                    /*else if (elsoSorDarabok[1].startsWith("/packages/")){
+                        String userJson = getRequestBody(in);
+                        User user = objectMapper.readValue(userJson, User.class);
+                        User authUser = restUser.login(user.getUsername(), user.getPassword());
+                        if(authUser.getUsername() == "admin"){
+                            out.println("HTTP/1.1 200 OK");
+                            out.println("Content-Type: application/json");
+                            out.println("Authorization: Basic admin-mtcgToken");
+                            out.println("Connection: close");
+                            out.println("");
+                            User usercards = rest.createPackage(Integer.parseInt(elsoSorDarabok[1].substring(10)));
+                            out.println(objectMapper.writeValueAsString(usercards));
+                        }
+                    }*/
+                    else if (elsoSorDarabok[1].startsWith("/users")) {
                         switch (elsoSorDarabok[0]) {
                             case "GET":
                                 if (elsoSorDarabok[1].equals("/users/12")) {
@@ -150,38 +174,36 @@ public class EchoMultiServer {
                                 out.println(jsonUsers);
                                 break;
                             case "POST":
-                                while ((inputLine = in.readLine()) != null && !inputLine.isEmpty()) {
+                                String userJson = getRequestBody(in);
+                                User user = objectMapper.readValue(userJson, User.class);
+                                if (restUser.checkUser(user)) {
+                                    out.println("HTTP/1.1 404 Not Found");
+                                    out.println("Content-Type: text/html");
+                                    out.println("");
+                                    out.println("<html><body><h1>404 Not Found</h1></body></html>");
+                                } else {
 
+
+                                    out.println("HTTP/1.1 200 OK");
+                                    out.println("Content-Type: application/json");
+                                    out.println("");
+
+
+                                    String plainText = user.getPassword();
+
+                                    String hashedPassword = BCrypt.hashpw(plainText, BCrypt.gensalt());
+
+                                    //dehash
+                                /*
+                                String hashedPassword = rs.getString("password");
+                                if(BCrypt.checkpw(password, hashedPassword)) {
+                                    System.out.println("Login successful!");
                                 }
-                                String userAsJson = in.readLine();
-                                User user = objectMapper.readValue(userAsJson, User.class);
-                                out.println("HTTP/1.1 200 OK");
-                                out.println("Content-Type: application/json");
-                                out.println("");
+                                 */
 
-                                //out.println("<html><body><h1>POST has been successful</h1></body></html>");
-
-                                KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
-                                keyGenerator.init(128); // block size is 128bits
-                                SecretKey secretKey = keyGenerator.generateKey();
-                                cipher = Cipher.getInstance("AES");
-
-                                String plainText = user.getPassword();
-                               // out.println("Plain Text Before Encryption: " + plainText);
-
-
-                                String encryptedText = encrypt(plainText, secretKey);
-
-                                //out.println("Encrypted Text After Encryption: " + encryptedText);
-
-                                //String decryptedText = decrypt(encryptedText, secretKey);
-
-                               // out.println("Decrypted Text After Decryption: " + decryptedText);
-
-                                //User user = new User("Gipsz Jakab", encryptedText);
-                                user.setPassword(encryptedText);
-                                out.println(objectMapper.writeValueAsString(rest.post(user)));
-
+                                    user.setPassword(hashedPassword);
+                                    out.println(objectMapper.writeValueAsString(rest.post(user)));
+                                }
                                 break;
 
                             case "PUT": //mint a post, csak specifikusabb. Egy adott user felulirasa. pelda: /users/1
@@ -263,26 +285,47 @@ public class EchoMultiServer {
                 throw new RuntimeException(e);
             }
         }
+
+        private String jsonToLowerCase(String json) {
+            try {
+                Map<String, Object> map = objectMapper.readValue(json, Map.class);
+                Map<String, Object> map2 = new HashMap<>();
+                for (Map.Entry<String, Object> entry : map.entrySet()) {
+                    map2.put(entry.getKey().toLowerCase(), entry.getValue());
+                }
+                return objectMapper.writeValueAsString(map2);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public String getRequestBody(BufferedReader in) throws IOException {
+            String inputLine;
+            while ((inputLine = in.readLine()) != null && !inputLine.isEmpty()) {
+
+            }
+            char[] buffer = new char[1024];
+            int read = in.read(buffer);
+            return jsonToLowerCase(new String(buffer, 0, read));
+        }
     }
 
 
-    public static String encrypt(String plainText, SecretKey secretKey) throws Exception {
-        byte[] plainTextByte = plainText.getBytes();
-        cipher.init(Cipher.ENCRYPT_MODE, secretKey);
-        byte[] encryptedByte = cipher.doFinal(plainTextByte);
-        Base64.Encoder encoder = Base64.getEncoder();
-        return encoder.encodeToString(encryptedByte);
-    }
+  /*                              while ((inputLine = in.readLine()) != null && !inputLine.isEmpty()) {
 
-    public static String decrypt(String encryptedText, SecretKey secretKey) throws Exception {
-        Base64.Decoder decoder = Base64.getDecoder();
-        byte[] encryptedTextByte = decoder.decode(encryptedText);
-        cipher.init(Cipher.DECRYPT_MODE, secretKey);
-        byte[] decryptedByte = cipher.doFinal(encryptedTextByte);
-        return new String(decryptedByte);
     }
+    char[] buffer = new char[1024];
+    int read = in.read(buffer);
+    String userAsJson = new String(buffer, 0, read);
+    userAsJson = jsonToLowerCase(userAsJson);
+    //String userAsJson = in.readLine();
+    User user = objectMapper.readValue(userAsJson, User.class);
+*/
 
-    //generateCard
+
+    //generateToken
+
+
 
 
     public static void main(String[] args) {
@@ -296,7 +339,7 @@ public class EchoMultiServer {
         // 4. visszaadja a játékost (és a 4 új kártyát)
 
         EchoMultiServer server = new EchoMultiServer();
-        server.start(5555);
+        server.start(10001);
 
     }
 
