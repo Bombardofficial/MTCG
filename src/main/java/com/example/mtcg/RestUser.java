@@ -9,7 +9,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-
+import org.json.JSONArray;
+import org.json.JSONObject;
 public class RestUser implements Rest<User> {
 
     private final PreparedStatement put;
@@ -24,6 +25,9 @@ public class RestUser implements Rest<User> {
     private final PreparedStatement checkUser;
     private final PreparedStatement createCardforPackage;
     private final PreparedStatement sendCardstoPackage;
+
+    private final PreparedStatement getCards;
+    private final PreparedStatement getDeck;
     public RestUser(Connection conn) throws SQLException {
         this.conn = conn;
         this.getAll = conn.prepareStatement("SELECT * FROM users");
@@ -36,6 +40,8 @@ public class RestUser implements Rest<User> {
         this.checkUser = conn.prepareStatement("SELECT * FROM users WHERE username = ?");
         this.createCardforPackage = conn.prepareStatement("INSERT INTO cards (idx, name, damage) VALUES (?, ?, ?)");
         this.sendCardstoPackage = conn.prepareStatement("INSERT INTO packages (user_id, card_id) VALUES (?, ?)");
+        this.getCards = conn.prepareStatement("SELECT * FROM cards WHERE user_id = ?");
+        this.getDeck = conn.prepareStatement("SELECT * FROM cards WHERE user_id = ? AND in_deck = true");
     }
 
     @Override
@@ -141,25 +147,36 @@ public class RestUser implements Rest<User> {
 
         return null;
     }
-/*
+
     @Override
-    public User createPackage(int id) throws SQLException {
-        User user = get(id);
-
-        for(int i = 0; i < 5; i++) {
-            Card card = get(id);
-            this.createCardforPackage.setInt(1, id);
-            this.createCardforPackage.setString(2, card.getName());
-            this.createCardforPackage.setInt(3, card.getDamage());
-            this.createCardforPackage.executeUpdate();
-
-        }
-        //set values for package
-
+    public User createPackage(Card data) throws SQLException {
+        this.createCardforPackage.setString(1, data.getId());
+        this.createCardforPackage.setString(2, data.getName());
+        this.createCardforPackage.setInt(3, data.getDamage());
+        this.createCardforPackage.executeUpdate();
 
         return null;
     }
-*/
+
+    @Override
+    public User getCards(int id) throws SQLException {
+        //get all cards from user
+        this.getCards.setInt(1, id);
+        ResultSet rs = this.getCards.executeQuery();
+        return makeOne(rs);
+
+    }
+
+    @Override
+    public User getDeck(int id) throws SQLException {
+        //get all cards from user
+        this.getDeck.setInt(1, id);
+        ResultSet rs = this.getDeck.executeQuery();
+        return makeOne(rs);
+
+    }
+
+
     public boolean checkUser(User user) {
         try {
             this.checkUser.setString(1, user.getUsername());

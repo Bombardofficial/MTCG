@@ -1,5 +1,7 @@
 package com.example.mtcg.card;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 
 import java.util.Objects;
@@ -7,9 +9,8 @@ import java.util.Objects;
 public class Card {
 
     protected String name;
-
     protected int damage;
-
+    protected String id;
     protected ElementType type;
 
     protected MonsterType monsterType;
@@ -24,7 +25,13 @@ public class Card {
         this.monsterType = monsterType;
 
     }
+    @JsonCreator
+    public Card(@JsonProperty("id") String id, @JsonProperty("name") String name, @JsonProperty("damage") int damage){
+        this.id = id;
+        this.name = name;
+        this.damage = damage;
 
+    }
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

@@ -3,7 +3,10 @@ package com.example.mtcg;
 //import org.slf4j.LoggerFactory;
 
 
+import com.example.mtcg.card.Card;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.mindrot.jbcrypt.BCrypt;
 
 import java.io.*;
@@ -108,6 +111,8 @@ public class EchoMultiServer {
                     String path = "/";
                     // path -> /users vagy /users
                     Rest<User> rest = endPoints.get("/users");
+
+
                     if (elsoSorDarabok[1].startsWith("/generatecardsfor/")) {
                         // + userId
                         // meghívjuk a generateCardsForUser(userId) metódust (amit a mainben írtam le)
@@ -125,7 +130,9 @@ public class EchoMultiServer {
                     } else if (elsoSorDarabok[1].startsWith("/sessions")) {
                         String userJson = getRequestBody(in);
                         User user = objectMapper.readValue(userJson, User.class);
+                        System.out.println(userJson);
                         User authUser = restUser.login(user.getUsername(), user.getPassword());
+
                         if (authUser != null) {
                             out.println("HTTP/1.1 200 OK");
                             out.println("Content-Type: text/plain");
@@ -143,21 +150,137 @@ public class EchoMultiServer {
 
 
                     }
-                    /*else if (elsoSorDarabok[1].startsWith("/packages/")){
+                    else if (elsoSorDarabok[1].startsWith("/packages")){
+
                         String userJson = getRequestBody(in);
-                        User user = objectMapper.readValue(userJson, User.class);
-                        User authUser = restUser.login(user.getUsername(), user.getPassword());
-                        if(authUser.getUsername() == "admin"){
+                        System.out.println(userJson);
+                        JSONObject json = new JSONObject(userJson);
+                        if(json.getString("username").equals("admin") && json.getString("password").equals("admin")) {
                             out.println("HTTP/1.1 200 OK");
-                            out.println("Content-Type: application/json");
+                            out.println("Content-Type: text/plain"); // application/jsonnak kell lennie
                             out.println("Authorization: Basic admin-mtcgToken");
                             out.println("Connection: close");
                             out.println("");
-                            User usercards = rest.createPackage(Integer.parseInt(elsoSorDarabok[1].substring(10)));
-                            out.println(objectMapper.writeValueAsString(usercards));
                         }
-                    }*/
-                    else if (elsoSorDarabok[1].startsWith("/users")) {
+                        System.out.println("username : "+ json.getString("username"));
+                        System.out.println("password : "+ json.getString("password"));
+                        String packageslist = json.getString("packages");
+
+                        System.out.println("packages array : "+packageslist);
+                        JSONArray array = new JSONArray(packageslist);
+                        System.out.println(" Card 1: "+array.getJSONObject(0));
+                        System.out.println(" Card 2: "+array.getJSONObject(1));
+                        System.out.println(" Card 3: "+array.getJSONObject(2));
+                        for(int i=0; i < array.length(); i++){
+                            String jsonString = array.getJSONObject(i).toString();
+                            Card card = objectMapper.readValue(jsonToLowerCase(jsonString), Card.class);
+                            rest.createPackage(card); //idx in card table is integer, but in json it is string, fix it
+                            System.out.println("card : "+card);
+                        }
+
+                        break;
+                    } else if (elsoSorDarabok[1].startsWith("/transactions/packages")) {
+
+                        String userJson = getRequestBody(in);
+                        User user = objectMapper.readValue(userJson, User.class);
+                        System.out.println(userJson);
+                        User authUser = restUser.login(user.getUsername(), user.getPassword());
+                        if(authUser.getCoins() < 5) {
+                            out.println("HTTP/1.1 403 Forbidden");
+                            out.println("Content-Type: text/html");
+                            out.println("");
+                            out.println("<html><body><h1>403 Forbidden</h1></body></html>");
+                            out.println("Not enough coins");
+                            break;
+                        } else {
+                            if(authUser.getUsername() == "kienboec") {
+                                out.println("HTTP/1.1 200 OK");
+                                out.println("Content-Type: text/plain");
+                                out.println("Connection: close");
+                                out.println("");
+                                out.println("Authorization: Basic kienboec-mtcgToken");
+                                out.println();
+                            } else if (authUser.getUsername() == "altenhof") {
+                                out.println("HTTP/1.1 200 OK");
+                                out.println("Content-Type: text/plain");
+                                out.println("Connection: close");
+                                out.println("");
+                                out.println("Authorization: Basic altenhof-mtcgToken");
+                                out.println();
+                            } else {
+                                out.println("HTTP/1.1 401 Unauthorized");
+                                out.println("Content-Type: text/html");
+                                out.println("");
+                                out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
+                                break;
+                            }
+
+                            out.println("Transaction successful.");
+                        }
+
+
+                        break;
+
+
+                    } else if (elsoSorDarabok[1].startsWith("/cards")) {
+
+                        String userJson = getRequestBody(in);
+                        User user = objectMapper.readValue(userJson, User.class);
+                        System.out.println(userJson);
+                        User authUser = restUser.login(user.getUsername(), user.getPassword());
+
+                        if(authUser.getUsername() == "kienboec") {
+                            out.println("HTTP/1.1 200 OK");
+                            out.println("Content-Type: application/json");
+                            out.println("Connection: close");
+                            out.println("");
+                            out.println("Authorization: Basic kienboec-mtcgToken");
+                            out.println();
+                        } else if (authUser.getUsername() == "altenhof") {
+                            out.println("HTTP/1.1 200 OK");
+                            out.println("Content-Type: application/json");
+                            out.println("Connection: close");
+                            out.println("");
+                            out.println("Authorization: Basic altenhof-mtcgToken");
+                            out.println();
+                        } else {
+                            out.println("HTTP/1.1 401 Unauthorized");
+                            out.println("Content-Type: text/html");
+                            out.println("");
+                            out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
+                            break;
+                        }
+                        User usercards = rest.getCards(Integer.parseInt(elsoSorDarabok[1].substring(7)));
+                        out.println(objectMapper.writeValueAsString(usercards));
+                        out.println();
+                        
+
+                    } else if (elsoSorDarabok[1].startsWith("/deck")) { //hianyzik a deck konfiguralasa es konfiguralt deck lekerese
+
+                        String userJson = getRequestBody(in);
+                        User user = objectMapper.readValue(userJson, User.class);
+                        System.out.println(userJson);
+                        User authUser = restUser.login(user.getUsername(), user.getPassword());
+
+                        if (authUser != null) {
+                            out.println("HTTP/1.1 200 OK");
+                            out.println("Content-Type: application/json");
+                            out.println("Connection: close");
+                            out.println("");
+                            out.println("Authorization: Basic "+authUser.getUsername()+"-mtcgToken");
+                            out.println();
+                        } else {
+                            out.println("HTTP/1.1 401 Unauthorized");
+                            out.println("Content-Type: text/html");
+                            out.println("");
+                            out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
+                        }
+                        User deck = rest.getDeck(Integer.parseInt(elsoSorDarabok[1].substring(6)));
+                        out.println(objectMapper.writeValueAsString(deck));
+                        out.println();
+                        break;
+
+                    } else if (elsoSorDarabok[1].startsWith("/users")) {
                         switch (elsoSorDarabok[0]) {
                             case "GET":
                                 if (elsoSorDarabok[1].equals("/users/12")) {

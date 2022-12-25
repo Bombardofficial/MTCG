@@ -1,5 +1,7 @@
 package com.example.mtcg;
 
+import com.example.mtcg.card.Card;
+
 import java.sql.SQLException;
 import java.util.List;
 
@@ -15,5 +17,13 @@ public interface Rest<T> {
     T getById(int i) throws SQLException;
     T generateCard(int id) throws SQLException;
     T login(String username, String password) throws SQLException;
+
+    T createPackage(Card data)  throws SQLException;
+
+    T getCards(int id) throws SQLException;
+
+    T getDeck(int id) throws SQLException;
+
+
     //T createPackage(int id) throws SQLException;
 }
