@@ -4,6 +4,9 @@ package com.example.mtcg;
 
 
 import com.example.mtcg.card.Card;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -14,6 +17,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -151,33 +155,36 @@ public class EchoMultiServer {
 
                     }
                     else if (elsoSorDarabok[1].startsWith("/packages")){
+                        String token = getAuthorizationToken(in);
+                        if (!token.equals("admin-mtcgToken")) {
+                            // hiba van
+                            break;
+                        } else {
+                            try {
+                                String packageJson = getRequestBodyAsList(in);
 
-                        String userJson = getRequestBody(in);
-                        System.out.println(userJson);
-                        JSONObject json = new JSONObject(userJson);
-                        if(json.getString("username").equals("admin") && json.getString("password").equals("admin")) {
-                            out.println("HTTP/1.1 200 OK");
-                            out.println("Content-Type: text/plain"); // application/jsonnak kell lennie
-                            out.println("Authorization: Basic admin-mtcgToken");
-                            out.println("Connection: close");
-                            out.println("");
+                                JSONArray jsonArray = new JSONArray(packageJson);
+                                List<Card> cards = new ArrayList<>();
+                                for (int i = 0; i < jsonArray.length(); i++) {
+                                    JSONObject jsonObject = jsonObjectToLowerCase(jsonArray.getJSONObject(i));
+                                    Card card = objectMapper.readValue(jsonObject.toString(), Card.class);
+                                    cards.add(card);
+                                }
+                                rest.createPackage(cards);
+                            } catch (Exception ex) {
+                                ex.printStackTrace();
+                            }
+/*                            System.out.println(" Card 1: " + cards.get(0));
+                            System.out.println(" Card 2: " + cards.get(1));
+                            System.out.println(" Card 3: " + cards.get(2));*/
+
+                            /*for (int i = 0; i < array.length(); i++) {
+                                String jsonString = array.getJSONObject(i).toString();
+                                Card card = objectMapper.readValue(jsonToLowerCase(jsonString), Card.class);
+                                rest.createPackage(card); //idx in card table is integer, but in json it is string, fix it
+                                System.out.println("card : " + card);
+                            }*/
                         }
-                        System.out.println("username : "+ json.getString("username"));
-                        System.out.println("password : "+ json.getString("password"));
-                        String packageslist = json.getString("packages");
-
-                        System.out.println("packages array : "+packageslist);
-                        JSONArray array = new JSONArray(packageslist);
-                        System.out.println(" Card 1: "+array.getJSONObject(0));
-                        System.out.println(" Card 2: "+array.getJSONObject(1));
-                        System.out.println(" Card 3: "+array.getJSONObject(2));
-                        for(int i=0; i < array.length(); i++){
-                            String jsonString = array.getJSONObject(i).toString();
-                            Card card = objectMapper.readValue(jsonToLowerCase(jsonString), Card.class);
-                            rest.createPackage(card); //idx in card table is integer, but in json it is string, fix it
-                            System.out.println("card : "+card);
-                        }
-
                         break;
                     } else if (elsoSorDarabok[1].startsWith("/transactions/packages")) {
 
@@ -193,7 +200,7 @@ public class EchoMultiServer {
                             out.println("Not enough coins");
                             break;
                         } else {
-                            if(authUser.getUsername() == "kienboec") {
+                            if(authUser.getUsername().equals("kienboec")) {
                                 out.println("HTTP/1.1 200 OK");
                                 out.println("Content-Type: text/plain");
                                 out.println("Connection: close");
@@ -422,6 +429,24 @@ public class EchoMultiServer {
             }
         }
 
+        private JSONObject jsonObjectToLowerCase(JSONObject node){
+            JSONObject out = new JSONObject();
+            for (String key : node.keySet()) {
+                out.put(key.toLowerCase(), node.get(key));
+            }
+            return out;
+        }
+
+        public String getAuthorizationToken(BufferedReader in) throws IOException {
+            String line;
+            while ((line = in.readLine()) != null && !line.isEmpty()) {
+                if (line.startsWith("Authorization: Basic ")) {
+                    return line.substring(21);
+                }
+            }
+            return line;
+        }
+
         public String getRequestBody(BufferedReader in) throws IOException {
             String inputLine;
             while ((inputLine = in.readLine()) != null && !inputLine.isEmpty()) {
@@ -430,6 +455,16 @@ public class EchoMultiServer {
             char[] buffer = new char[1024];
             int read = in.read(buffer);
             return jsonToLowerCase(new String(buffer, 0, read));
+        }
+
+        public String getRequestBodyAsList(BufferedReader in) throws IOException {
+            String inputLine;
+            while ((inputLine = in.readLine()) != null && !inputLine.isEmpty()) {
+
+            }
+            char[] buffer = new char[1024];
+            int read = in.read(buffer);
+            return new String(buffer, 0, read);
         }
     }
 

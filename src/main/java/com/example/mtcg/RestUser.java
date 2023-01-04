@@ -16,6 +16,7 @@ public class RestUser implements Rest<User> {
     private final PreparedStatement put;
     private final PreparedStatement deleting;
     private final PreparedStatement getById;
+    private final PreparedStatement createPackage;
     private Connection conn;
     private final PreparedStatement getAll;
     private final PreparedStatement post;
@@ -24,7 +25,7 @@ public class RestUser implements Rest<User> {
     private final PreparedStatement uploadCards;
     private final PreparedStatement checkUser;
     private final PreparedStatement createCardforPackage;
-    private final PreparedStatement sendCardstoPackage;
+
 
     private final PreparedStatement getCards;
     private final PreparedStatement getDeck;
@@ -38,10 +39,11 @@ public class RestUser implements Rest<User> {
         this.updateDeck = conn.prepareStatement("UPDATE cards SET in_deck = false WHERE user_id = ?");
         this.uploadCards = conn.prepareStatement("INSERT INTO cards (user_id, in_deck, name, damage, element, type) VALUES (?, ?, ?, ?, ?, ?)");
         this.checkUser = conn.prepareStatement("SELECT * FROM users WHERE username = ?");
-        this.createCardforPackage = conn.prepareStatement("INSERT INTO cards (idx, name, damage) VALUES (?, ?, ?)");
-        this.sendCardstoPackage = conn.prepareStatement("INSERT INTO packages (user_id, card_id) VALUES (?, ?)");
+        this.createCardforPackage = conn.prepareStatement("INSERT INTO cards (id, name, damage, package_id) VALUES (?, ?, ?, ?)");
+
         this.getCards = conn.prepareStatement("SELECT * FROM cards WHERE user_id = ?");
         this.getDeck = conn.prepareStatement("SELECT * FROM cards WHERE user_id = ? AND in_deck = true");
+        this.createPackage = conn.prepareStatement("INSERT INTO package(id) VALUES(DEFAULT) RETURNING id", PreparedStatement.RETURN_GENERATED_KEYS);
     }
 
     @Override
@@ -148,14 +150,21 @@ public class RestUser implements Rest<User> {
         return null;
     }
 
-    @Override
-    public User createPackage(Card data) throws SQLException {
-        this.createCardforPackage.setString(1, data.getId());
-        this.createCardforPackage.setString(2, data.getName());
-        this.createCardforPackage.setInt(3, data.getDamage());
-        this.createCardforPackage.executeUpdate();
 
-        return null;
+    @Override
+    public void createPackage(List<Card> cards) throws SQLException {
+        this.createPackage.executeUpdate();
+        ResultSet rs = this.createPackage.getGeneratedKeys();
+        if (rs.next()) {
+            int packageId = rs.getInt(1);
+            for (Card card : cards) {
+                this.createCardforPackage.setString(1, card.getId());
+                this.createCardforPackage.setString(2, card.getName());
+                this.createCardforPackage.setInt(3, card.getDamage());
+                this.createCardforPackage.setInt(4, packageId);
+                this.createCardforPackage.executeUpdate();
+            }
+        }
     }
 
     @Override

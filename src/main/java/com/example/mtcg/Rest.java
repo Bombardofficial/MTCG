@@ -18,7 +18,8 @@ public interface Rest<T> {
     T generateCard(int id) throws SQLException;
     T login(String username, String password) throws SQLException;
 
-    T createPackage(Card data)  throws SQLException;
+
+    void createPackage(List<Card> cards) throws SQLException;
 
     T getCards(int id) throws SQLException;
 
