@@ -19,8 +19,10 @@ public class Battle {
 
         Card user1Card;
         Card user2Card;
-
-        int remainingRounds = 100;
+        //add cards to the deck
+        player1.getDeck().addCard();
+        player2.getDeck().addCard();
+        int remainingRounds = 5;
         for(int i = 0; i< remainingRounds; i++){
 
             System.out.println("Rounds "+ remainingRounds +":");
@@ -46,8 +48,8 @@ public class Battle {
             user1Card = player1.getDeck().randomCard();
             user2Card = player2.getDeck().randomCard();
 
-            System.out.println( user1Card.getName()+" von "+ player1.getUsername()+" zieht in den Kampf.");
-            System.out.println( user2Card.getName()+" von "+ player2.getUsername()+" zieht in den Kampf.");
+            System.out.println( user1Card.getName()+" of "+ player1.getUsername()+" moves to the battle.");
+            System.out.println( user2Card.getName()+" of "+ player2.getUsername()+" moves to the battle.");
 
             //Vergleichen von Karten
             //Monsterkampf
@@ -64,11 +66,11 @@ public class Battle {
 
             switch(round){
 
-                case 0: System.out.println("Die Runde verlief unentschieden.");
+                case 0: System.out.println("The round ended in a draw.");
 
-                case 1: System.out.println(player1.getUsername()+" gewinnt die Runde. "+user1Card.getName()+" besiegte "+user2Card.getName());
+                case 1: System.out.println(player1.getUsername()+" wins the round. "+user1Card.getName()+" defeated  "+user2Card.getName());
 
-                case 2: System.out.println(player2.getUsername()+" gewinnt die Runde. "+user2Card.getName()+" besiegte "+user1Card.getName());
+                case 2: System.out.println(player2.getUsername()+" wins the round. "+user2Card.getName()+" defeated  "+user1Card.getName());
 
             }
 
@@ -78,7 +80,7 @@ public class Battle {
 
         if(player1.getDeck().Size()!=0 && player2.getDeck().Size()!=0){
 
-            System.out.println("Keiner der beiden Spieler hat gewonnen! Unentschieden!");
+            System.out.println("Neither player has won! Tie!");
             player1.draw(player2.getElo());
             player2.draw(player1.getElo());
 
@@ -86,7 +88,7 @@ public class Battle {
 
     }
 
-    private void takeCard(int result, Card user1Card, Card user2Card){
+    public void takeCard(int result, Card user1Card, Card user2Card){
 
         player1.getDeck().removeFirst();
 
@@ -96,7 +98,7 @@ public class Battle {
 
             case 0:{
 
-                System.out.println("Keine Karten wurden übernommen.");
+                System.out.println("No cards were taken over.");
                 player1.getDeck().add(user1Card);
                 player2.getDeck().add(user2Card);
                 break;
@@ -105,7 +107,7 @@ public class Battle {
 
             case 1:{
 
-                System.out.println(player1.getUsername()+" übernahm "+user2Card.getName());
+                System.out.println(player1.getUsername()+" took over "+user2Card.getName());
                 player1.getDeck().add(user1Card);
                 player1.getDeck().add(user2Card);
                 break;
@@ -114,7 +116,7 @@ public class Battle {
 
             case 2:{
 
-                System.out.println(player2.getUsername()+" übernahm "+user1Card.getName());
+                System.out.println(player2.getUsername()+" took over "+user1Card.getName());
                 player2.getDeck().add(user2Card);
                 player2.getDeck().add(user1Card);
                 break;
@@ -192,6 +194,45 @@ public class Battle {
             return 1;
 
         }
+        if(user1Card.getMonsterType().equals(MonsterType.KNIGHT) && user2Card.getType().equals(ElementType.NORMAL)){
+
+            if(user1Card.getDamage() > user2Card.getDamage()){
+
+                return 1;
+
+            }
+            else if(user1Card.getDamage() < user2Card.getDamage()){
+
+                return 2;
+
+            }
+            else{
+
+                return 0;
+
+            }
+
+        }
+        if(user1Card.getType().equals(ElementType.NORMAL) && user2Card.getMonsterType().equals(MonsterType.KNIGHT)){
+
+            if(user1Card.getDamage() > user2Card.getDamage()){
+
+                return 1;
+
+            }
+            else if(user1Card.getDamage() < user2Card.getDamage()){
+
+                return 2;
+
+            }
+            else{
+
+                return 0;
+
+            }
+
+        }
+
 
         if(user1Card.getMonsterType().equals(MonsterType.KRAKEN)){
 

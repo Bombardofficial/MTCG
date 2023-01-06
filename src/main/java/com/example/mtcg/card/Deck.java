@@ -1,9 +1,8 @@
 package com.example.mtcg.card;
 
 import lombok.Getter;
-import lombok.Setter;
+
 import java.util.LinkedList;
-import java.util.List;
 
 import java.util.Random;
 @Getter
@@ -27,7 +26,16 @@ public class Deck {
         return this.deck.get(randomPosition);
     }
 
-
+    public void addCard(){
+        int numCards = 4;
+        if (deck.size() < numCards) {
+            // Generate a new card inside the loop
+            for (int i = 0; i < numCards; i++) {
+                Card card = Card.generateCard();
+                deck.add(card);
+            }
+        }
+    }
     public int Size() {
         return this.deck.size();
     }

@@ -25,6 +25,8 @@ public interface Rest<T> {
 
     T getDeck(int id) throws SQLException;
 
+    void buyPackage(T authUser);
+
 
     //T createPackage(int id) throws SQLException;
 }

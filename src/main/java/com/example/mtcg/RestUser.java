@@ -26,7 +26,7 @@ public class RestUser implements Rest<User> {
     private final PreparedStatement checkUser;
     private final PreparedStatement createCardforPackage;
 
-
+    private final PreparedStatement buyPackage;
     private final PreparedStatement getCards;
     private final PreparedStatement getDeck;
     public RestUser(Connection conn) throws SQLException {
@@ -44,6 +44,7 @@ public class RestUser implements Rest<User> {
         this.getCards = conn.prepareStatement("SELECT * FROM cards WHERE user_id = ?");
         this.getDeck = conn.prepareStatement("SELECT * FROM cards WHERE user_id = ? AND in_deck = true");
         this.createPackage = conn.prepareStatement("INSERT INTO package(id) VALUES(DEFAULT) RETURNING id", PreparedStatement.RETURN_GENERATED_KEYS);
+        this.buyPackage = conn.prepareStatement("UPDATE cards SET user_id WHERE package_id = (SELECT MIN(package_id) FROM cards)\n");
     }
 
     @Override
@@ -182,6 +183,17 @@ public class RestUser implements Rest<User> {
         this.getDeck.setInt(1, id);
         ResultSet rs = this.getDeck.executeQuery();
         return makeOne(rs);
+
+    }
+
+    @Override
+    public void buyPackage(User authUser) {
+        authUser.setCoins(authUser.getCoins() - 5);
+        try {
+            this.buyPackage.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
 
     }
 

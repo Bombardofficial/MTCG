@@ -3,9 +3,11 @@ package com.example.mtcg.card;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.util.Objects;
 @Getter
+@Setter
 public class Card {
 
     protected String name;
@@ -61,6 +63,7 @@ public class Card {
             name = name.substring(0, 1).toUpperCase() + name.substring(1).toLowerCase();
 
 
+
             return new MonsterCard(name, ElementType.generateDamage(), element, monsterType);
 
         }
@@ -71,6 +74,10 @@ public class Card {
     public int hashCode() {
         return Objects.hash(name, damage, type, monsterType, cardtype);
     }
+
+
+
+
 
 }
 

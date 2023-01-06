@@ -34,6 +34,12 @@ public class EchoMultiServer {
         try {
             Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/postgres", "postgres", "Bazisugrokatica11");
             serverSocket = new ServerSocket(port);
+            System.out.println("MTCG Server started on port " + port);
+
+            String sql = "DELETE FROM PACKAGE;DELETE FROM GAME;DELETE FROM CARDS;DELETE FROM USERS;";
+            PreparedStatement statement = conn.prepareStatement(sql);
+            statement.executeUpdate();
+
             while (true) {
                 new EchoClientHandler(serverSocket.accept(), conn).start();
             }
@@ -71,33 +77,7 @@ public class EchoMultiServer {
             endPoints.put("/users", restUser);
         }
 
-        public void httpGetTest(int usernumber) throws IOException {
-            out.println("HTTP/1.1 200 OK");
-            out.println("Content-Type: text/html"); // application/json
-            out.println("Connection: close");
-            out.println("");
-            if (usernumber == 12) {
-                out.println("<html><body>\r\n[{\"id\":1,\"name\":\"John Doe\"}]");
-                out.println("<h1>Adatatvitel sikeres.</h1></body></html>");
 
-                out.println();
-                out.flush();
-                out.close();
-                in.close();
-            } else if (usernumber == 2) {
-                out.println("<html><body>\r\n[{\"id\":2,\"name\":\"Jane Doe\"}]");
-                out.println("<h1>Adatatvitel sikeres.</h1></body></html>");
-                out.println();
-                out.flush();
-                out.close();
-                in.close();
-            } else {
-                out.println("HTTP/1.1 404 Not Found");
-                out.println("Content-Type: text/html");
-                out.println("");
-                out.println("<html><body><h1>404 Not Found</h1></body></html>");
-            }
-        }
         public void run() {
             try {
                 out = new PrintWriter(clientSocket.getOutputStream(), true);
@@ -118,10 +98,6 @@ public class EchoMultiServer {
 
 
                     if (elsoSorDarabok[1].startsWith("/generatecardsfor/")) {
-                        // + userId
-                        // meghívjuk a generateCardsForUser(userId) metódust (amit a mainben írtam le)
-                        // visszakapjuk a játékost a deckjével együtt
-                        // visszaküldjük a kliensnek (objectMapper segítségével JSON-be alakítva)
                         User usercards = rest.generateCard(Integer.parseInt(elsoSorDarabok[1].substring(18)));
                         out.println("HTTP/1.1 200 OK");
                         out.println("Content-Type: application/json");
@@ -129,6 +105,7 @@ public class EchoMultiServer {
                         out.println("");
                         out.println(objectMapper.writeValueAsString(usercards));
                         out.println();
+                        out.println("Cards have been generated for " + usercards.getUsername());
                         break;
 
                     } else if (elsoSorDarabok[1].startsWith("/sessions")) {
@@ -142,13 +119,15 @@ public class EchoMultiServer {
                             out.println("Content-Type: text/plain");
                             out.println("Connection: close");
                             out.println("");
-                            out.println(authUser.getUsername()+"-mtcgToken");
+                            out.println("Authorization: "+authUser.getUsername()+"-mtcgToken");
+                            out.println(authUser.getUsername() + " logged in");
                             out.println();
                         } else {
                             out.println("HTTP/1.1 401 Unauthorized");
                             out.println("Content-Type: text/html");
                             out.println("");
                             out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
+                            out.println("Error: Wrong username or password");
                         }
                         break;
 
@@ -158,7 +137,10 @@ public class EchoMultiServer {
                         String token = getAuthorizationToken(in);
                         if (!token.equals("admin-mtcgToken")) {
                             // hiba van
-                            break;
+                            out.println("HTTP/1.1 401 Unauthorized");
+                            out.println("Content-Type: text/html");
+                            out.println("");
+                            out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
                         } else {
                             try {
                                 String packageJson = getRequestBodyAsList(in);
@@ -171,6 +153,7 @@ public class EchoMultiServer {
                                     cards.add(card);
                                 }
                                 rest.createPackage(cards);
+                                out.println("Package created");
                             } catch (Exception ex) {
                                 ex.printStackTrace();
                             }
@@ -187,41 +170,33 @@ public class EchoMultiServer {
                         }
                         break;
                     } else if (elsoSorDarabok[1].startsWith("/transactions/packages")) {
-
+                        String token = getAuthorizationToken(in);
                         String userJson = getRequestBody(in);
                         User user = objectMapper.readValue(userJson, User.class);
                         System.out.println(userJson);
                         User authUser = restUser.login(user.getUsername(), user.getPassword());
+                        if (authUser == null){
+                            out.println("HTTP/1.1 401 Unauthorized");
+                            out.println("Content-Type: text/html");
+                            out.println("");
+                            out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
+                        }
                         if(authUser.getCoins() < 5) {
                             out.println("HTTP/1.1 403 Forbidden");
                             out.println("Content-Type: text/html");
                             out.println("");
                             out.println("<html><body><h1>403 Forbidden</h1></body></html>");
-                            out.println("Not enough coins");
+                            System.out.println("Not enough coins");
                             break;
                         } else {
-                            if(authUser.getUsername().equals("kienboec")) {
-                                out.println("HTTP/1.1 200 OK");
-                                out.println("Content-Type: text/plain");
-                                out.println("Connection: close");
-                                out.println("");
-                                out.println("Authorization: Basic kienboec-mtcgToken");
-                                out.println();
-                            } else if (authUser.getUsername() == "altenhof") {
-                                out.println("HTTP/1.1 200 OK");
-                                out.println("Content-Type: text/plain");
-                                out.println("Connection: close");
-                                out.println("");
-                                out.println("Authorization: Basic altenhof-mtcgToken");
-                                out.println();
-                            } else {
-                                out.println("HTTP/1.1 401 Unauthorized");
-                                out.println("Content-Type: text/html");
-                                out.println("");
-                                out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
-                                break;
-                            }
-
+                            out.println("HTTP/1.1 200 OK");
+                            out.println("Content-Type: text/plain");
+                            out.println("Connection: close");
+                            out.println("");
+                            out.println("Authorization: "+authUser.getUsername()+"-mtcgToken");
+                            out.println();
+                            rest.buyPackage(authUser);
+                            //nincs kesz
                             out.println("Transaction successful.");
                         }
 
@@ -230,37 +205,29 @@ public class EchoMultiServer {
 
 
                     } else if (elsoSorDarabok[1].startsWith("/cards")) {
-
+                        String token = getAuthorizationToken(in);
                         String userJson = getRequestBody(in);
                         User user = objectMapper.readValue(userJson, User.class);
                         System.out.println(userJson);
                         User authUser = restUser.login(user.getUsername(), user.getPassword());
-
-                        if(authUser.getUsername() == "kienboec") {
+                        if (authUser != null) {
                             out.println("HTTP/1.1 200 OK");
                             out.println("Content-Type: application/json");
                             out.println("Connection: close");
                             out.println("");
-                            out.println("Authorization: Basic kienboec-mtcgToken");
-                            out.println();
-                        } else if (authUser.getUsername() == "altenhof") {
-                            out.println("HTTP/1.1 200 OK");
-                            out.println("Content-Type: application/json");
-                            out.println("Connection: close");
-                            out.println("");
-                            out.println("Authorization: Basic altenhof-mtcgToken");
+                            out.println("Authorization: Basic "+authUser.getUsername()+"-mtcgToken");
                             out.println();
                         } else {
                             out.println("HTTP/1.1 401 Unauthorized");
                             out.println("Content-Type: text/html");
                             out.println("");
                             out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
-                            break;
                         }
+
                         User usercards = rest.getCards(Integer.parseInt(elsoSorDarabok[1].substring(7)));
                         out.println(objectMapper.writeValueAsString(usercards));
                         out.println();
-                        
+                        break;
 
                     } else if (elsoSorDarabok[1].startsWith("/deck")) { //hianyzik a deck konfiguralasa es konfiguralt deck lekerese
 
@@ -290,11 +257,6 @@ public class EchoMultiServer {
                     } else if (elsoSorDarabok[1].startsWith("/users")) {
                         switch (elsoSorDarabok[0]) {
                             case "GET":
-                                if (elsoSorDarabok[1].equals("/users/12")) {
-                                    httpGetTest(12);
-                                    //String userJson = rest.get(1);
-
-                                }
                                 List<User> users = restUser.getAll(); // van egy listánk a DB-ben szereplő, és onnan lekérdezett userekről
                                 String jsonUsers = objectMapper.writeValueAsString(users); // itt alakítja JSON-formátumba a listát
                                 out.println("HTTP/1.1 200 OK");
@@ -311,6 +273,7 @@ public class EchoMultiServer {
                                     out.println("Content-Type: text/html");
                                     out.println("");
                                     out.println("<html><body><h1>404 Not Found</h1></body></html>");
+                                    out.println("User already exists");
                                 } else {
 
 
@@ -333,6 +296,7 @@ public class EchoMultiServer {
 
                                     user.setPassword(hashedPassword);
                                     out.println(objectMapper.writeValueAsString(rest.post(user)));
+                                    out.println("User created");
                                 }
                                 break;
 
@@ -442,6 +406,10 @@ public class EchoMultiServer {
             while ((line = in.readLine()) != null && !line.isEmpty()) {
                 if (line.startsWith("Authorization: Basic ")) {
                     return line.substring(21);
+                }
+                else {
+                    //error
+                    //System.out.println("Token not found");
                 }
             }
             return line;
