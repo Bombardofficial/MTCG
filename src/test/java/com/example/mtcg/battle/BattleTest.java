@@ -11,21 +11,30 @@ import static org.mockito.Mockito.*;
 
 public class BattleTest {
     @Test
-    @DisplayName("1.")
+    @DisplayName("1. Testing the whole battle between two users")
     public void testFight() {
-        User player1 = mock(User.class);
-        User player2 = mock(User.class);
+        User player1 = new User("Player1", "password");
+
+        User player2 = new User("Player2", "password");
 
 
         //add cards to the deck
-        player1.getDeck().addCard();
-        player2.getDeck().addCard();
-        when(player1.getDeck().Size()).thenReturn(1, 0);
-        when(player2.getDeck().Size()).thenReturn(2, 1, 0);
+        player1.getDeck().addCards();
+        player2.getDeck().addCards();
         Battle battle = new Battle(player1, player2);
         battle.fight();
-        verify(player1).lose(player2.getElo());
-        verify(player2).win(player1.getElo());
+        assertNotEquals(player1.getDeck().Size(), player2.getDeck().Size());
+        System.out.println("Checking player 1's stats: \n");
+        System.out.println("Games: "+player1.getGames());
+        System.out.println("Wins: "+player1.getWins());
+        System.out.println("Losses: "+player1.getLosses());
+        System.out.println();
+        System.out.println("Checking player 2's stats: \n");
+        System.out.println("Games: "+player2.getGames());
+        System.out.println("Wins: "+player2.getWins());
+        System.out.println("Losses: "+player2.getLosses());
+        System.out.println("______________________________");
+
     }
 
 

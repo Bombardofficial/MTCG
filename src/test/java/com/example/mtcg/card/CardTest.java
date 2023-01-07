@@ -1,5 +1,6 @@
 package com.example.mtcg.card;
 import org.junit.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.RepeatedTest;
 
 import static org.junit.Assert.*;
@@ -8,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 public class CardTest {
 
     @Test
+    @DisplayName("1. Testing the constructor of the Card class")
     public void testConstructor() {
         String name = "Fire Monster";
         int damage = 10;
@@ -21,6 +23,7 @@ public class CardTest {
     }
 
     @Test
+    @DisplayName("2. Testing the JSON constructor of the Card class")
     public void testJsonCreatorConstructor() {
         String id = "123";
         String name = "Water Spell";
@@ -32,6 +35,7 @@ public class CardTest {
     }
 
     @Test
+    @DisplayName("3. Testing if the cards are equal")
     public void testEquals() {
         String name = "Water Monster";
         int damage = 15;
@@ -45,8 +49,10 @@ public class CardTest {
     }
 
     @RepeatedTest(5)
+    @DisplayName("4. Testing the card generator")
     public void testGenerateCard() {
         Card card = Card.generateCard();
+        assert card != null;
         System.out.println("Card name: "+card.getName());
         System.out.println("Card damage: "+card.getDamage());
         if(CardType.MONSTER.equals(card.getCardtype())) {

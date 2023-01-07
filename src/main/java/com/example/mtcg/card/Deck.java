@@ -26,7 +26,7 @@ public class Deck {
         return this.deck.get(randomPosition);
     }
 
-    public void addCard(){
+    public void addCards(){
         int numCards = 4;
         if (deck.size() < numCards) {
             // Generate a new card inside the loop

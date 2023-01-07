@@ -20,12 +20,15 @@ public class Battle {
         Card user1Card;
         Card user2Card;
         //add cards to the deck
-        player1.getDeck().addCard();
-        player2.getDeck().addCard();
-        int remainingRounds = 5;
+        player1.getDeck().addCards();
+        player2.getDeck().addCards();
+        int remainingRounds = 10;
+        int rounds = 1;
+        System.out.println("Starting a new battle between "+player1.getUsername()+" and "+player2.getUsername()+"!");
+        System.out.println("______________________________");
         for(int i = 0; i< remainingRounds; i++){
-
-            System.out.println("Rounds "+ remainingRounds +":");
+            System.out.println("Round "+(rounds)+":");
+            System.out.println("Rounds left: "+ remainingRounds+"\n");
 
             //Deck von Spieler 1 leer
             if(player1.getDeck().Size()==0) {
@@ -66,16 +69,18 @@ public class Battle {
 
             switch(round){
 
-                case 0: System.out.println("The round ended in a draw.");
+                case 0: System.out.println("The round ended in a draw.\n");
 
-                case 1: System.out.println(player1.getUsername()+" wins the round. "+user1Card.getName()+" defeated  "+user2Card.getName());
+                case 1: System.out.println(player1.getUsername()+" wins the round. \n"+user1Card.getName()+" defeated "+user2Card.getName()+".");
 
-                case 2: System.out.println(player2.getUsername()+" wins the round. "+user2Card.getName()+" defeated  "+user1Card.getName());
+                case 2: System.out.println(player2.getUsername()+" wins the round. \n"+user2Card.getName()+" defeated "+user1Card.getName()+".");
 
             }
 
             takeCard(round,user1Card,user2Card);
-
+            remainingRounds--;
+            rounds++;
+            System.out.println("=====================================");
         }
 
         if(player1.getDeck().Size()!=0 && player2.getDeck().Size()!=0){
@@ -107,7 +112,7 @@ public class Battle {
 
             case 1:{
 
-                System.out.println(player1.getUsername()+" took over "+user2Card.getName());
+                System.out.println(player1.getUsername()+" took over "+user2Card.getName()+".");
                 player1.getDeck().add(user1Card);
                 player1.getDeck().add(user2Card);
                 break;
@@ -116,7 +121,7 @@ public class Battle {
 
             case 2:{
 
-                System.out.println(player2.getUsername()+" took over "+user1Card.getName());
+                System.out.println(player2.getUsername()+" took over "+user1Card.getName()+".");
                 player2.getDeck().add(user2Card);
                 player2.getDeck().add(user1Card);
                 break;
