@@ -80,6 +80,7 @@ public class EchoMultiServer {
 
         public void run() {
             try {
+                Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/postgres", "postgres", "Bazisugrokatica11");
                 out = new PrintWriter(clientSocket.getOutputStream(), true);
                 in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                 String inputLine;
@@ -153,6 +154,10 @@ public class EchoMultiServer {
                                     cards.add(card);
                                 }
                                 rest.createPackage(cards);
+                                out.println("HTTP/1.1 200 OK");
+                                out.println("Content-Type: text/plain");
+                                out.println("Connection: close");
+                                out.println("");
                                 out.println("Package created");
                             } catch (Exception ex) {
                                 ex.printStackTrace();
@@ -171,90 +176,210 @@ public class EchoMultiServer {
                         break;
                     } else if (elsoSorDarabok[1].startsWith("/transactions/packages")) {
                         String token = getAuthorizationToken(in);
-                        String userJson = getRequestBody(in);
-                        User user = objectMapper.readValue(userJson, User.class);
-                        System.out.println(userJson);
-                        User authUser = restUser.login(user.getUsername(), user.getPassword());
-                        if (authUser == null){
-                            out.println("HTTP/1.1 401 Unauthorized");
-                            out.println("Content-Type: text/html");
-                            out.println("");
-                            out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
+                        //String userJson = getRequestBody(in);
+                        //User user = objectMapper.readValue(userJson, User.class);
+                        //System.out.println(userJson);
+                        //User authUser = restUser.login(user.getUsername(), user.getPassword());
+                        String username = "";
+                        // TODO token ellenőrzése: van, és -mctgToken-re végződik, és ebből kellene az, ami ez előtt van
+                        if(token != null && token.endsWith("-mtcgToken")){
+
+                            int indexToken = token.indexOf("-mtcgToken");
+                            username = token.substring(0, indexToken);
+
                         }
-                        if(authUser.getCoins() < 5) {
-                            out.println("HTTP/1.1 403 Forbidden");
-                            out.println("Content-Type: text/html");
-                            out.println("");
-                            out.println("<html><body><h1>403 Forbidden</h1></body></html>");
-                            System.out.println("Not enough coins");
-                            break;
-                        } else {
-                            out.println("HTTP/1.1 200 OK");
-                            out.println("Content-Type: text/plain");
-                            out.println("Connection: close");
-                            out.println("");
-                            out.println("Authorization: "+authUser.getUsername()+"-mtcgToken");
-                            out.println();
-                            rest.buyPackage(authUser);
-                            //nincs kesz
-                            out.println("Transaction successful.");
+                        User authUser = new User(username, "1234");
+                        //Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/postgres", "postgres", "Bazisugrokatica11");
+                        PreparedStatement stmt = conn.prepareStatement("SELECT coins FROM users WHERE username = ?");
+                        stmt.setString(1, authUser.getUsername());
+                        ResultSet rs = stmt.executeQuery();
+                        while (rs.next()) {
+                            //authUser.setCoins(10);
+                            if (authUser == null){
+                                out.println("HTTP/1.1 401 Unauthorized");
+                                out.println("Content-Type: text/html");
+                                out.println("");
+                                out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
+                            }
+                            PreparedStatement checkPackages = conn.prepareStatement("SELECT COUNT(DISTINCT package_id) FROM cards WHERE package_id NOT IN (SELECT package_id FROM cards WHERE user_id IS NOT NULL)");
+                            ResultSet rs2 = checkPackages.executeQuery();
+                            int remaining = 0;
+                            if (rs2.next()) {
+                                remaining = rs2.getInt(1);
+                                System.out.println(remaining);
+                                if(remaining == 0){
+                                    out.println("HTTP/1.1 403 Forbidden");
+                                    out.println("Content-Type: text/html");
+                                    out.println("");
+                                    out.println("<html><body><h1>403 Forbidden</h1></body></html>");
+                                    System.out.println("No packages left.");
+                                    break;
+                                }
+                                if(rs.getInt("coins") < 5) {
+                                    out.println("HTTP/1.1 403 Forbidden");
+                                    out.println("Content-Type: text/html");
+                                    out.println("");
+                                    out.println("<html><body><h1>403 Forbidden</h1></body></html>");
+                                    System.out.println("Not enough coins");
+                                    break;
+                                } else {
+                                    out.println("HTTP/1.1 200 OK");
+                                    out.println("Content-Type: text/plain");
+                                    out.println("Connection: close");
+                                    out.println("");
+                                    out.println("Authorization: "+token);
+                                    out.println();
+                                    rest.buyPackage(authUser);
+                                    out.println("Transaction successful.");
+                                    System.out.println(rs.getInt("coins"));
+                                }
+                            }
+
                         }
 
+                        rs.close();
+                        stmt.close();
 
                         break;
 
-
                     } else if (elsoSorDarabok[1].startsWith("/cards")) {
-                        String token = getAuthorizationToken(in);
-                        String userJson = getRequestBody(in);
-                        User user = objectMapper.readValue(userJson, User.class);
-                        System.out.println(userJson);
-                        User authUser = restUser.login(user.getUsername(), user.getPassword());
-                        if (authUser != null) {
-                            out.println("HTTP/1.1 200 OK");
-                            out.println("Content-Type: application/json");
-                            out.println("Connection: close");
-                            out.println("");
-                            out.println("Authorization: Basic "+authUser.getUsername()+"-mtcgToken");
-                            out.println();
-                        } else {
-                            out.println("HTTP/1.1 401 Unauthorized");
-                            out.println("Content-Type: text/html");
-                            out.println("");
-                            out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
-                        }
 
-                        User usercards = rest.getCards(Integer.parseInt(elsoSorDarabok[1].substring(7)));
-                        out.println(objectMapper.writeValueAsString(usercards));
-                        out.println();
+                        String token = getAuthorizationToken(in);
+
+                        String username = "";
+                        if(token != null && token.endsWith("-mtcgToken")){
+
+                            int indexToken = token.indexOf("-mtcgToken");
+                            username = token.substring(0, indexToken);
+
+                        }
+                        User authUser = new User(username, "1234");
+                        PreparedStatement stmt = conn.prepareStatement("SELECT id FROM users WHERE username = ?");
+                        stmt.setString(1, authUser.getUsername());
+                        out.println(authUser.getUsername());
+                        ResultSet rs = stmt.executeQuery();
+
+                        while (rs.next()) {
+                            if (token != null) {
+                                out.println("HTTP/1.1 200 OK");
+                                out.println("Content-Type: application/json");
+                                out.println("Connection: close");
+                                out.println("");
+                                out.println("Authorization: Basic " + token);
+                                out.println();
+                                List<Card> cards = rest.getCards(rs.getInt("id"));
+                                out.println(objectMapper.writeValueAsString(cards));
+                                out.println();
+                            } else {
+                                out.println("HTTP/1.1 401 Unauthorized");
+                                out.println("Content-Type: text/html");
+                                out.println("");
+                                out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
+                            }
+                        }
                         break;
 
                     } else if (elsoSorDarabok[1].startsWith("/deck")) { //hianyzik a deck konfiguralasa es konfiguralt deck lekerese
 
-                        String userJson = getRequestBody(in);
-                        User user = objectMapper.readValue(userJson, User.class);
-                        System.out.println(userJson);
-                        User authUser = restUser.login(user.getUsername(), user.getPassword());
+                        String deckJson = getRequestBodyAsList(in);
+                        String token = getAuthorizationToken(in);
 
-                        if (authUser != null) {
-                            out.println("HTTP/1.1 200 OK");
-                            out.println("Content-Type: application/json");
-                            out.println("Connection: close");
-                            out.println("");
-                            out.println("Authorization: Basic "+authUser.getUsername()+"-mtcgToken");
-                            out.println();
-                        } else {
-                            out.println("HTTP/1.1 401 Unauthorized");
-                            out.println("Content-Type: text/html");
-                            out.println("");
-                            out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
+                        String username = "";
+                        if(token != null && token.endsWith("-mtcgToken")){
+
+                            int indexToken = token.indexOf("-mtcgToken");
+                            username = token.substring(0, indexToken);
+
                         }
-                        User deck = rest.getDeck(Integer.parseInt(elsoSorDarabok[1].substring(6)));
-                        out.println(objectMapper.writeValueAsString(deck));
-                        out.println();
+
+                        if(deckJson != null){
+
+
+                            JSONArray jsonArray = new JSONArray(deckJson);
+                            if(jsonArray.length() < 4){
+                                out.println("HTTP/1.1 403 Forbidden");
+                                out.println("Content-Type: text/html");
+                                out.println("");
+                                out.println("<html><body><h1>403 Forbidden</h1></body></html>");
+                                System.out.println("Not enough cards provided");
+                                break;
+                            }
+                            List<String> cardIds = new ArrayList<>();
+                            for (int i = 0; i < jsonArray.length(); i++) {
+                                cardIds.add(jsonArray.getString(i));
+                            }
+                            rest.configureDeck(cardIds,username);
+                        }
+                        //User user = objectMapper.readValue(userJson, User.class);
+                        //System.out.println(userJson);
+                        //User authUser = restUser.login(user.getUsername(), user.getPassword());
+
+
+                        User authUser = new User(username, "1234");
+                        PreparedStatement stmt = conn.prepareStatement("SELECT id FROM users WHERE username = ?");
+                        stmt.setString(1, authUser.getUsername());
+                        out.println(authUser.getUsername());
+                        ResultSet rs = stmt.executeQuery();
+
+                        while (rs.next()) {
+
+                            if (token != null) {
+                                out.println("HTTP/1.1 200 OK");
+                                out.println("Content-Type: application/json");
+                                out.println("Connection: close");
+                                out.println("");
+                                out.println("Authorization: Basic " + token);
+                                out.println();
+                            } else {
+                                out.println("HTTP/1.1 401 Unauthorized");
+                                out.println("Content-Type: text/html");
+                                out.println("");
+                                out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
+                            }
+                            List<Card> deck = rest.getDeck(rs.getInt("id"));
+                            out.println(objectMapper.writeValueAsString(deck));
+                            out.println();
+                        }
                         break;
 
-                    } else if (elsoSorDarabok[1].startsWith("/users")) {
+                    }else if (elsoSorDarabok[1].startsWith("/deck?format=plain")) {
+                        String token = getAuthorizationToken(in);
+
+                        String username = "";
+                        if(token != null && token.endsWith("-mtcgToken")){
+
+                            int indexToken = token.indexOf("-mtcgToken");
+                            username = token.substring(0, indexToken);
+
+                        }
+                        User authUser = new User(username, "1234");
+                        PreparedStatement stmt = conn.prepareStatement("SELECT id FROM users WHERE username = ?");
+                        stmt.setString(1, authUser.getUsername());
+                        out.println(authUser.getUsername());
+                        ResultSet rs = stmt.executeQuery();
+
+                        while (rs.next()) {
+
+                            if (token != null) {
+                                out.println("HTTP/1.1 200 OK");
+                                out.println("Content-Type: text/plain"); //Plain format
+                                out.println("Connection: close");
+                                out.println("");
+                                out.println("Authorization: Basic " + token);
+                                out.println();
+                            } else {
+                                out.println("HTTP/1.1 401 Unauthorized");
+                                out.println("Content-Type: text/html");
+                                out.println("");
+                                out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
+                            }
+                            List<Card> deck = rest.getDeck(rs.getInt("id"));
+                            out.println(objectMapper.writeValueAsString(deck));
+                            out.println();
+                        }
+                        break;
+                    }
+                    else if (elsoSorDarabok[1].startsWith("/users")) {
                         switch (elsoSorDarabok[0]) {
                             case "GET":
                                 List<User> users = restUser.getAll(); // van egy listánk a DB-ben szereplő, és onnan lekérdezett userekről

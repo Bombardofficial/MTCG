@@ -8,6 +8,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -29,6 +30,12 @@ public class RestUser implements Rest<User> {
     private final PreparedStatement buyPackage;
     private final PreparedStatement getCards;
     private final PreparedStatement getDeck;
+    private final PreparedStatement selectUser;
+
+    private final PreparedStatement setCoins;
+    private final PreparedStatement getCoins;
+    private final PreparedStatement configureDeckbyUsername;
+
     public RestUser(Connection conn) throws SQLException {
         this.conn = conn;
         this.getAll = conn.prepareStatement("SELECT * FROM users");
@@ -37,14 +44,19 @@ public class RestUser implements Rest<User> {
         this.put = conn.prepareStatement("UPDATE users SET username = ?, password = ? WHERE id = ?");
         this.deleting = conn.prepareStatement("DELETE FROM users WHERE id = ?");
         this.updateDeck = conn.prepareStatement("UPDATE cards SET in_deck = false WHERE user_id = ?");
-        this.uploadCards = conn.prepareStatement("INSERT INTO cards (user_id, in_deck, name, damage, element, type) VALUES (?, ?, ?, ?, ?, ?)");
+        this.uploadCards = conn.prepareStatement("INSERT INTO cards (id,user_id, in_deck, name, damage, element, type) VALUES (?,?, ?, ?, ?, ?, ?)");
         this.checkUser = conn.prepareStatement("SELECT * FROM users WHERE username = ?");
         this.createCardforPackage = conn.prepareStatement("INSERT INTO cards (id, name, damage, package_id) VALUES (?, ?, ?, ?)");
 
         this.getCards = conn.prepareStatement("SELECT * FROM cards WHERE user_id = ?");
         this.getDeck = conn.prepareStatement("SELECT * FROM cards WHERE user_id = ? AND in_deck = true");
         this.createPackage = conn.prepareStatement("INSERT INTO package(id) VALUES(DEFAULT) RETURNING id", PreparedStatement.RETURN_GENERATED_KEYS);
-        this.buyPackage = conn.prepareStatement("UPDATE cards SET user_id WHERE package_id = (SELECT MIN(package_id) FROM cards)\n");
+        this.buyPackage = conn.prepareStatement("UPDATE cards SET user_id = ? WHERE package_id = (SELECT MIN(package_id) FROM cards)\n");
+        this.selectUser = conn.prepareStatement("SELECT * FROM users WHERE username = ?");
+        this.setCoins = conn.prepareStatement("UPDATE users SET coins = ? WHERE username = ?");
+        this.getCoins = conn.prepareStatement("SELECT coins FROM users WHERE username = ?");
+
+        this.configureDeckbyUsername = conn.prepareStatement("WITH user_id AS ( SELECT id FROM users WHERE username = ? )UPDATE cards SET in_deck = true WHERE id IN ? AND user_id = (SELECT id FROM user_id);");
     }
 
     @Override
@@ -68,6 +80,24 @@ public class RestUser implements Rest<User> {
         String username = rs.getString("username");
         String password = rs.getString("password");
         return new User(id, username, password);
+    }
+
+    private List<Card> makeCardList(ResultSet rs) throws SQLException {
+        List<Card> cards = new ArrayList<>();
+        while (rs.next()){
+            Card card = makeOneCard(rs);
+            cards.add(card);
+        }
+        return cards;
+    }
+
+    private Card makeOneCard(ResultSet rs) throws SQLException {
+
+        String id = rs.getString("id");
+        //String username = rs.getString("username");
+        //String password = rs.getString("password");
+        // TODO
+        return new Card(id, "", 0);
     }
 
     @Override
@@ -117,13 +147,15 @@ public class RestUser implements Rest<User> {
 
         for(int i = 0; i < 4; i++) {
             Card card = Card.generateCard();
-            this.uploadCards.setInt(1, id);
-            this.uploadCards.setBoolean(2, true);
+            String test = "test";
+            this.uploadCards.setString(1, test+id);
+            this.uploadCards.setInt(2, id);
+            this.uploadCards.setBoolean(3, true);
             assert card != null;
-            this.uploadCards.setString(3, card.getName());
-            this.uploadCards.setInt(4, card.getDamage());
-            this.uploadCards.setString(5, card.getType().toString());
-            this.uploadCards.setString(6, card.getCardtype().toString());
+            this.uploadCards.setString(4, card.getName());
+            this.uploadCards.setInt(5, card.getDamage());
+            this.uploadCards.setString(6, card.getType().toString());
+            this.uploadCards.setString(7, card.getCardtype().toString());
 
             this.uploadCards.executeUpdate();
 
@@ -169,33 +201,92 @@ public class RestUser implements Rest<User> {
     }
 
     @Override
-    public User getCards(int id) throws SQLException {
+    public List<Card> getCards(int id) throws SQLException {
         //get all cards from user
         this.getCards.setInt(1, id);
         ResultSet rs = this.getCards.executeQuery();
-        return makeOne(rs);
+        return makeCardList(rs);
 
     }
 
     @Override
-    public User getDeck(int id) throws SQLException {
+    public List<Card> getDeck(int id) throws SQLException {
         //get all cards from user
         this.getDeck.setInt(1, id);
         ResultSet rs = this.getDeck.executeQuery();
-        return makeOne(rs);
+        return makeCardList(rs);
 
     }
 
     @Override
-    public void buyPackage(User authUser) {
-        authUser.setCoins(authUser.getCoins() - 5);
-        try {
-            this.buyPackage.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
+    public void configureDeck(List<String> cardIds, String username) throws SQLException {
+        //check if cards are already in the deck
+        String checkCardsInDeckSql = "SELECT id FROM cards WHERE id IN (? " + String.join(",?", Collections.nCopies(cardIds.size()-1,"?")) + ") AND user_id = ? AND in_deck = true";
+        PreparedStatement checkCardsInDeckStmt = conn.prepareStatement(checkCardsInDeckSql);
+        for (int i = 0; i < cardIds.size(); i++) {
+            checkCardsInDeckStmt.setString(i+1, cardIds.get(i));
+        }
+        //getting id of the user
+        this.selectUser.setString(1,username);
+        ResultSet rs = selectUser.executeQuery();
+        int userId = 0;
+        while (rs.next()) {
+            userId = rs.getInt("id");
         }
 
+        checkCardsInDeckStmt.setInt(cardIds.size()+1, userId);
+        ResultSet rs2 = checkCardsInDeckStmt.executeQuery();
+        //putting the number of cards to a list that are in the deck and are the same as the provided ids in the curl script
+        List<String> cardsInDeck = new ArrayList<>();
+        while (rs2.next()) {
+            cardsInDeck.add(rs2.getString("id"));
+        }
+        if(cardsInDeck.size()>0) {
+            System.out.println("The following cards are already in the deck: " + cardsInDeck);
+        }
+        else {
+            //Add cards to deck
+            for (String cardId : cardIds) {
+                this.configureDeckbyUsername.setString(1,username);
+                this.configureDeckbyUsername.setString(2, cardId);
+            }
+        }
     }
+
+    @Override
+    public void buyPackage(User authUser) throws SQLException {
+        selectUser.setString(1, authUser.getUsername());
+        ResultSet rs = selectUser.executeQuery();
+        int coins = 0;
+        while (rs.next()) {
+            coins = rs.getInt("coins");
+            try {
+                coins -= 5;
+                authUser.setCoins(coins);
+                setCoins.setInt(1, coins);
+                setCoins.setString(2, authUser.getUsername());
+                setCoins.executeUpdate();
+                this.buyPackage.setInt(1,rs.getInt("id"));
+                this.buyPackage.executeUpdate();
+
+
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+
+
+
+        //rs.close();
+        //selectUser.close();
+
+        //setCoins.close();
+
+
+
+
+    }
+
 
 
     public boolean checkUser(User user) {

@@ -21,11 +21,14 @@ public interface Rest<T> {
 
     void createPackage(List<Card> cards) throws SQLException;
 
-    T getCards(int id) throws SQLException;
+    List<Card> getCards(int id) throws SQLException;
 
-    T getDeck(int id) throws SQLException;
+    List<Card> getDeck(int id) throws SQLException;
+    void configureDeck(List<String> cardIds, String username) throws SQLException;
 
-    void buyPackage(T authUser);
+    void buyPackage(T authUser) throws SQLException;
+
+
 
 
     //T createPackage(int id) throws SQLException;

@@ -7,7 +7,6 @@ import org.junit.jupiter.api.DisplayName;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.mockito.Mockito.*;
 
 public class BattleTest {
     @Test
@@ -58,7 +57,7 @@ public class BattleTest {
         int winner = battle.MonsterFight(goblin, troll);
         assertEquals(2, winner);
         int winner2 = battle.MonsterFight(troll, goblin);
-        assertNotEquals(2, winner2);
+        assertEquals(1, winner2);
 
         System.out.println("Fire Troll defeated Water Goblin.");
         System.out.println( "Fire Troll with "+troll.getDamage() + " damage defeated " + " Water Goblin with "+ goblin.getDamage()  +" damage.");
@@ -74,7 +73,7 @@ public class BattleTest {
         int winner = battle.SpellFight(spell1, spell2);
         assertEquals(2, winner);
         int winner2 = battle.SpellFight(spell2, spell1);
-        assertNotEquals(2, winner2);
+        assertEquals(1, winner2);
 
         System.out.println( "Water Spell with "+spell2.getDamage() + " damage defeated " + " Fire Spell with "+ spell1.getDamage()  +" damage.");
 
@@ -153,7 +152,7 @@ public class BattleTest {
         int winner = battle.SpellFight(spell, monster);
         assertEquals(1, winner);
         int winner2 = battle.SpellFight(monster, spell);
-        assertNotEquals(1, winner2);
+        assertNotEquals(1, winner2); /////////////////////////////////////ne ezt hanem assertequals 2
         System.out.println( "Regular Spell with "+spell.getDamage() + " damage defeated " + " Water Goblin with "+ monster.getDamage()  +" damage.");
 
     }
