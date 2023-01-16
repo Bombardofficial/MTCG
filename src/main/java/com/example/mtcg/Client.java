@@ -150,7 +150,7 @@ public class Client {
                 BufferedReader inplay = new BufferedReader(new InputStreamReader(socketclient.getInputStream()));
                 PrintWriter outplay = new PrintWriter(socketclient.getOutputStream(), true);
                 outplay.println("GET /opponent HTTP/1.1");
-                outplay.println("Authorization: Bearer admin-mctgToken");
+                outplay.println("Authorization: Basic admin-mctgToken");
                 outplay.println();
                 outplay.println("{ \"user\": ");
                 outplay.close();

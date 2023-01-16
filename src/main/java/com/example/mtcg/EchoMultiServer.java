@@ -1,12 +1,7 @@
 package com.example.mtcg;
-//import org.slf4j.Logger;
-//import org.slf4j.LoggerFactory;
-
 
 import com.example.mtcg.card.Card;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
+import com.example.mtcg.market.Trading;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -17,18 +12,13 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
+
 
 public class EchoMultiServer {
 
-    //private static final Logger LOG = LoggerFactory.getLogger(EchoMultiServer.class);
-
     private ServerSocket serverSocket;
-
-
 
     public void start(int port) {
         try {
@@ -88,13 +78,7 @@ public class EchoMultiServer {
                     System.out.println(inputLine);
 
                     String[] elsoSorDarabok = inputLine.split(" ");
-                    //int index = elsoSorDarabok[1].substring(1).indexOf("/"); // /users/1 vagy /users
-                    int index = 0;
-                    // elsoSorDarabok[1].substring(1) -> users/1 vagy users
-                    // elsoSorDarabok[1].substring(1).indexOf("/") -> 5 vagy -1
-                    //String path = (index == -1) ? elsoSorDarabok[1] : elsoSorDarabok[1].substring(0, index+1);
-                    String path = "/";
-                    // path -> /users vagy /users
+
                     Rest<User> rest = endPoints.get("/users");
 
 
@@ -162,24 +146,12 @@ public class EchoMultiServer {
                             } catch (Exception ex) {
                                 ex.printStackTrace();
                             }
-/*                            System.out.println(" Card 1: " + cards.get(0));
-                            System.out.println(" Card 2: " + cards.get(1));
-                            System.out.println(" Card 3: " + cards.get(2));*/
 
-                            /*for (int i = 0; i < array.length(); i++) {
-                                String jsonString = array.getJSONObject(i).toString();
-                                Card card = objectMapper.readValue(jsonToLowerCase(jsonString), Card.class);
-                                rest.createPackage(card); //idx in card table is integer, but in json it is string, fix it
-                                System.out.println("card : " + card);
-                            }*/
                         }
                         break;
                     } else if (elsoSorDarabok[1].startsWith("/transactions/packages")) {
                         String token = getAuthorizationToken(in);
-                        //String userJson = getRequestBody(in);
-                        //User user = objectMapper.readValue(userJson, User.class);
-                        //System.out.println(userJson);
-                        //User authUser = restUser.login(user.getUsername(), user.getPassword());
+
                         String username = "";
                         // TODO token ellenőrzése: van, és -mctgToken-re végződik, és ebből kellene az, ami ez előtt van
                         if(token != null && token.endsWith("-mtcgToken")){
@@ -189,7 +161,7 @@ public class EchoMultiServer {
 
                         }
                         User authUser = new User(username, "1234");
-                        //Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/postgres", "postgres", "Bazisugrokatica11");
+
                         PreparedStatement stmt = conn.prepareStatement("SELECT coins FROM users WHERE username = ?");
                         stmt.setString(1, authUser.getUsername());
                         ResultSet rs = stmt.executeQuery();
@@ -231,7 +203,7 @@ public class EchoMultiServer {
                                     out.println();
                                     rest.buyPackage(authUser);
                                     out.println("Transaction successful.");
-                                    System.out.println(rs.getInt("coins"));
+
                                 }
                             }
 
@@ -253,10 +225,18 @@ public class EchoMultiServer {
                             username = token.substring(0, indexToken);
 
                         }
+                        else{
+                            out.println("HTTP/1.1 403 Forbidden");
+                            out.println("Content-Type: text/html");
+                            out.println("");
+                            out.println("<html><body><h1>403 Forbidden</h1></body></html>");
+                            out.println("No token provided.");
+                            break;
+                        }
                         User authUser = new User(username, "1234");
                         PreparedStatement stmt = conn.prepareStatement("SELECT id FROM users WHERE username = ?");
                         stmt.setString(1, authUser.getUsername());
-                        out.println(authUser.getUsername());
+
                         ResultSet rs = stmt.executeQuery();
 
                         while (rs.next()) {
@@ -265,8 +245,6 @@ public class EchoMultiServer {
                                 out.println("Content-Type: application/json");
                                 out.println("Connection: close");
                                 out.println("");
-                                out.println("Authorization: Basic " + token);
-                                out.println();
                                 List<Card> cards = rest.getCards(rs.getInt("id"));
                                 out.println(objectMapper.writeValueAsString(cards));
                                 out.println();
@@ -279,10 +257,64 @@ public class EchoMultiServer {
                         }
                         break;
 
-                    } else if (elsoSorDarabok[1].startsWith("/deck")) { //hianyzik a deck konfiguralasa es konfiguralt deck lekerese
-
-                        String deckJson = getRequestBodyAsList(in);
+                    }
+                    else if (elsoSorDarabok[1].startsWith("/deck?format=plain")) {
                         String token = getAuthorizationToken(in);
+                        String username = "";
+                        if(token != null && token.endsWith("-mtcgToken")){
+
+                            int indexToken = token.indexOf("-mtcgToken");
+                            username = token.substring(0, indexToken);
+
+                        }
+                        User authUser = new User(username, "1234");
+                        PreparedStatement stmt = conn.prepareStatement("SELECT id FROM users WHERE username = ?");
+                        stmt.setString(1, authUser.getUsername());
+
+                        ResultSet rs = stmt.executeQuery();
+
+                        while (rs.next()) {
+
+                            if (token != null) {
+                                out.println("HTTP/1.1 200 OK");
+                                out.println("Content-Type: text/plain"); //Plain format
+                                out.println("Connection: close");
+                                out.println();
+                            } else {
+                                out.println("HTTP/1.1 401 Unauthorized");
+                                out.println("Content-Type: text/html");
+                                out.println("");
+                                out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
+                            }
+                            PreparedStatement getFullDeck = conn.prepareStatement("SELECT * FROM cards WHERE user_id = ? AND in_deck = true");
+                            getFullDeck.setInt(1, rs.getInt("id"));
+                            ResultSet rs2 = getFullDeck.executeQuery();
+                            while (rs2.next()) {
+                                String cardId = rs2.getString("id");
+                                String name = rs2.getString("name");
+                                int damage = rs2.getInt("damage");
+                                String type = rs2.getString("type");
+                                String elementType = rs2.getString("element");
+                                out.println("ID: " + cardId);
+                                out.println("Name: " + name);
+                                out.println("Damage: " + damage);
+                                //out.println("Type: " + type);
+                                //out.println("Element Type: " + elementType);
+                                out.println();
+                            }
+                            //rest.getDeckAsPlain(rs.getInt("id"));
+
+                        }
+                        break;
+                    }
+                    else if (elsoSorDarabok[1].startsWith("/deck")) {
+                        String token = getAuthorizationToken(in);
+                        boolean isConfigured = false;
+                        String deckJson = null;
+                        if (elsoSorDarabok[0].equals("PUT")) {
+                            deckJson = getRequestBodyAsList(in);
+                        }
+
 
                         String username = "";
                         if(token != null && token.endsWith("-mtcgToken")){
@@ -309,16 +341,15 @@ public class EchoMultiServer {
                                 cardIds.add(jsonArray.getString(i));
                             }
                             rest.configureDeck(cardIds,username);
+                            isConfigured = true;
                         }
-                        //User user = objectMapper.readValue(userJson, User.class);
-                        //System.out.println(userJson);
-                        //User authUser = restUser.login(user.getUsername(), user.getPassword());
+
 
 
                         User authUser = new User(username, "1234");
                         PreparedStatement stmt = conn.prepareStatement("SELECT id FROM users WHERE username = ?");
                         stmt.setString(1, authUser.getUsername());
-                        out.println(authUser.getUsername());
+
                         ResultSet rs = stmt.executeQuery();
 
                         while (rs.next()) {
@@ -327,8 +358,6 @@ public class EchoMultiServer {
                                 out.println("HTTP/1.1 200 OK");
                                 out.println("Content-Type: application/json");
                                 out.println("Connection: close");
-                                out.println("");
-                                out.println("Authorization: Basic " + token);
                                 out.println();
                             } else {
                                 out.println("HTTP/1.1 401 Unauthorized");
@@ -337,12 +366,116 @@ public class EchoMultiServer {
                                 out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
                             }
                             List<Card> deck = rest.getDeck(rs.getInt("id"));
-                            out.println(objectMapper.writeValueAsString(deck));
+                            if(deck.isEmpty()){
+                                out.println(username+"'s deck: ");
+                                out.println("\nThe deck is empty.");
+                            }
+                            else{
+                                if(isConfigured){
+                                    out.println("\n"+username+"'s deck reconfigured.\n");
+                                }
+                                out.println(username+"'s deck: ");
+                                out.println(objectMapper.writeValueAsString(deck));
+                            }
+
                             out.println();
                         }
                         break;
 
-                    }else if (elsoSorDarabok[1].startsWith("/deck?format=plain")) {
+                    }
+
+                    else if (elsoSorDarabok[1].startsWith("/stats")) {
+                        String token = getAuthorizationToken(in);
+
+                        String username = "";
+                        if(token != null && token.endsWith("-mtcgToken")){
+
+                            int indexToken = token.indexOf("-mtcgToken");
+                            username = token.substring(0, indexToken);
+
+                        }
+                        User authUser = new User(username, "1234");
+
+                        PreparedStatement stmt = conn.prepareStatement("SELECT * FROM users WHERE username = ?");
+                        stmt.setString(1, authUser.getUsername());
+
+                        ResultSet rs = stmt.executeQuery();
+
+                        while (rs.next()) {
+
+                            if (token != null) {
+                                out.println("HTTP/1.1 200 OK");
+                                out.println("Content-Type: text/plain"); //Plain format
+                                out.println("Connection: close");
+                                out.println();
+                            } else {
+                                out.println("HTTP/1.1 401 Unauthorized");
+                                out.println("Content-Type: text/html");
+                                out.println("");
+                                out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
+                            }
+                            out.println(rs.getString("username") + " data: ");
+                            out.println();
+                            out.println("Wins: "+rs.getInt("wins"));
+                            out.println("Losses: "+rs.getInt("losses"));
+                            out.println("Games: "+rs.getInt("games"));
+                            out.println();
+                        }
+                        break;
+                    }
+                    else if (elsoSorDarabok[1].startsWith("/score")) {
+                        String token = getAuthorizationToken(in);
+
+                        String username = "";
+                        if(token != null && token.endsWith("-mtcgToken")){
+
+                            int indexToken = token.indexOf("-mtcgToken");
+                            username = token.substring(0, indexToken);
+
+                        }
+
+                        if (token != null) {
+                            out.println("HTTP/1.1 200 OK");
+                            out.println("Content-Type: text/plain"); //Plain format
+                            out.println("Connection: close");
+                            out.println();
+                        } else {
+                            out.println("HTTP/1.1 401 Unauthorized");
+                            out.println("Content-Type: text/html");
+                            out.println("");
+                            out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
+                        }
+                        //rest.showScoreboard();
+
+                        List<User> userDatas = rest.getAll();
+                        userDatas.sort(Comparator.comparing(User::getWins).reversed());
+                        out.println("Scoreboard by most wins: \n");
+                        for (User userData : userDatas) {
+                            out.println("Username: " + userData.getUsername());
+                            out.println("Wins: " + userData.getWins());
+
+                        }
+                        userDatas.sort(Comparator.comparingDouble((User u) -> (float)u.getWins()/(float)u.getGames()).reversed());
+                        out.println("Scoreboard by highest win rate: \n");
+                        for (User userData : userDatas) {
+                            out.println("Username: " + userData.getUsername());
+                            out.printf("Win Ratio: %.2f%%\n",(float)userData.getWins()/userData.getGames()*100);
+                        }
+                        userDatas.sort(Comparator.comparing(User::getElo).reversed());
+                        out.println("Scoreboard by biggest elo: \n");
+                        for (User userData : userDatas) {
+                            out.println("Username: " + userData.getUsername());
+                            out.println("Wins: " + userData.getWins());
+
+                        }
+
+
+
+                        out.println();
+
+                        break;
+                    }
+                    else if (elsoSorDarabok[1].startsWith("/tradings")) {
                         String token = getAuthorizationToken(in);
 
                         String username = "";
@@ -355,40 +488,180 @@ public class EchoMultiServer {
                         User authUser = new User(username, "1234");
                         PreparedStatement stmt = conn.prepareStatement("SELECT id FROM users WHERE username = ?");
                         stmt.setString(1, authUser.getUsername());
-                        out.println(authUser.getUsername());
-                        ResultSet rs = stmt.executeQuery();
 
-                        while (rs.next()) {
 
-                            if (token != null) {
-                                out.println("HTTP/1.1 200 OK");
-                                out.println("Content-Type: text/plain"); //Plain format
-                                out.println("Connection: close");
-                                out.println("");
-                                out.println("Authorization: Basic " + token);
-                                out.println();
-                            } else {
-                                out.println("HTTP/1.1 401 Unauthorized");
-                                out.println("Content-Type: text/html");
-                                out.println("");
-                                out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
-                            }
-                            List<Card> deck = rest.getDeck(rs.getInt("id"));
-                            out.println(objectMapper.writeValueAsString(deck));
-                            out.println();
-                        }
-                        break;
-                    }
-                    else if (elsoSorDarabok[1].startsWith("/users")) {
                         switch (elsoSorDarabok[0]) {
                             case "GET":
-                                List<User> users = restUser.getAll(); // van egy listánk a DB-ben szereplő, és onnan lekérdezett userekről
-                                String jsonUsers = objectMapper.writeValueAsString(users); // itt alakítja JSON-formátumba a listát
-                                out.println("HTTP/1.1 200 OK");
-                                out.println("Content-Type: application/json"); // application/json
-                                out.println("Connection: close");
+                                if (token != null) {
+                                    out.println("HTTP/1.1 200 OK");
+                                    out.println("Content-Type: text/plain"); //Plain format
+                                    out.println("Connection: close");
+                                    out.println();
+                                } else {
+                                    out.println("HTTP/1.1 401 Unauthorized");
+                                    out.println("Content-Type: text/html");
+                                    out.println("");
+                                    out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
+                                }
+                                String output = rest.getTradings();
+                                out.println(output);
+                                out.println();
+
+                                break;
+                            case "POST":
+
+                                String tradeIdString = elsoSorDarabok[1].substring(10);
+
+                                if(tradeIdString == null){
+                                    String tradeJson = getRequestBodyAsList(in);
+                                    if(tradeJson != null){
+
+
+                                        JSONArray jsonArray = new JSONArray(tradeJson);
+
+                                        List<Trading> tradeElements = new ArrayList<>();
+                                        for (int i = 0; i < jsonArray.length(); i++) {
+                                            JSONObject jsonObject = jsonObjectToLowerCase(jsonArray.getJSONObject(i));
+                                            Trading trading = objectMapper.readValue(jsonObject.toString(), Trading.class);
+                                            tradeElements.add(trading);
+                                        }
+
+                                        ResultSet rs = stmt.executeQuery();
+
+                                        while (rs.next()) {
+                                            if (token != null) {
+                                                out.println("HTTP/1.1 200 OK");
+                                                out.println("Content-Type: application/json"); //Plain format
+                                                out.println("Connection: close");
+                                                out.println();
+                                            } else {
+                                                out.println("HTTP/1.1 401 Unauthorized");
+                                                out.println("Content-Type: text/html");
+                                                out.println("");
+                                                out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
+                                            }
+                                            rest.postTradings(tradeElements,rs.getInt("id"));
+                                            out.println("Trading deal created by "+username);
+                                            out.println();
+                                        }
+                                    }
+                                }
+                                else{
+                                    String tradeJson = getRequestBody(in);
+                                    stmt.setString(1,username);
+                                    ResultSet result = stmt.executeQuery();
+                                    int userId = -1;
+                                    if(result.next()) {
+                                        userId = result.getInt("id");
+                                    }
+
+                                    PreparedStatement checkIfMyTrade = conn.prepareStatement("SELECT id, user_id FROM cards WHERE id = ?");
+                                    checkIfMyTrade.setString(1,tradeJson);
+                                    ResultSet result2 = checkIfMyTrade.executeQuery();
+                                    if(result2.next()) {
+                                        String id = result2.getString("id");
+                                        int cardUserId = result2.getInt("user_id");
+                                        if(id == tradeJson && cardUserId == userId) {
+                                            // Perform trade
+                                        } else {
+                                            // Do not perform trade
+                                        }
+                                    }
+                                    ResultSet rs2 = checkIfMyTrade.executeQuery();
+
+                                    while (rs2.next()) {
+                                        if (token != null) {
+                                            out.println("HTTP/1.1 200 OK");
+                                            out.println("Content-Type: application/json"); //Plain format
+                                            out.println("Connection: close");
+                                            out.println("");
+                                            out.println();
+
+                                        } else {
+                                            out.println("HTTP/1.1 401 Unauthorized");
+                                            out.println("Content-Type: text/html");
+                                            out.println("");
+                                            out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
+                                        }
+                                        //rest.postTradings(tradeElements,rs2.getInt("id"));
+                                        out.println("Trading deal created by "+username);
+                                        out.println();
+                                    }
+                                }
+                                break;
+                            case "DELETE": // /tradings/
+                                String tradeIdStr = elsoSorDarabok[1].substring(10);
+                                rest.deleteTradings(tradeIdStr);
+                                out.println("HTTP/1.1 204 No content");
+                                out.println("Content-Type: application/json");
+                                out.println("Trading deal ("+tradeIdStr+") deleted by "+ username);
                                 out.println("");
-                                out.println(jsonUsers);
+                                break;
+                        }
+
+                    }
+                    else if (elsoSorDarabok[1].startsWith("/users")) {
+
+                        switch (elsoSorDarabok[0]) {
+                            case "GET":
+                                String token = getAuthorizationToken(in);
+
+                                String username = "";
+                                if(token != null && token.endsWith("-mtcgToken")){
+
+                                    int indexToken = token.indexOf("-mtcgToken");
+                                    username = token.substring(0, indexToken);
+
+                                }
+
+                                User authUser = new User(username, "1234");
+
+
+                                PreparedStatement stmt = conn.prepareStatement("SELECT * FROM users WHERE username = ?");
+                                stmt.setString(1, authUser.getUsername());
+
+                                ResultSet rs = stmt.executeQuery();
+
+                                while (rs.next()) {
+
+                                    /*String urlname = elsoSorDarabok[1].substring(7);
+                                    String tokenname = username;
+                                    if(urlname != tokenname){
+                                        out.println("HTTP/1.1 401 Unauthorized");
+                                        out.println("Content-Type: text/html");
+                                        out.println("");
+                                        out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
+                                        out.println(elsoSorDarabok[1].substring(7));
+                                        out.println(username);
+                                        break;
+                                    }*/ //Something is very wrong with the compiler
+
+                                    if (token != null) {
+                                        out.println("HTTP/1.1 200 OK");
+                                        out.println("Content-Type: text/plain"); //Plain format
+                                        out.println("Connection: close");
+                                        out.println();
+                                    } else {
+                                        out.println("HTTP/1.1 401 Unauthorized");
+                                        out.println("Content-Type: text/html");
+                                        out.println("");
+                                        out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
+                                    }
+                                    out.println(rs.getString("username") + " data: ");
+                                    out.println();
+                                    out.println("Id: "+rs.getInt("id"));
+                                    out.println("Coins: "+rs.getInt("coins"));
+                                    out.println("Elo: "+rs.getInt("elo"));
+                                    out.println("Wins: "+rs.getInt("wins"));
+                                    out.println("Losses: "+rs.getInt("losses"));
+                                    out.println("Games: "+rs.getInt("games"));
+                                    out.println("Bio: "+rs.getString("bio"));
+                                    out.println("Image: "+rs.getString("image"));
+                                    if(rs.getString("name") != null){
+                                        out.println("Name: "+rs.getString("name"));
+                                    }
+                                    out.println();
+                                }
                                 break;
                             case "POST":
                                 String userJson = getRequestBody(in);
@@ -425,19 +698,52 @@ public class EchoMultiServer {
                                 }
                                 break;
 
-                            case "PUT": //mint a post, csak specifikusabb. Egy adott user felulirasa. pelda: /users/1
+                            case "PUT":
+                                String token2 = getAuthorizationToken(in);
+
+                                String username2 = "";
+                                if(token2 != null && token2.endsWith("-mtcgToken")){
+
+                                    int indexToken = token2.indexOf("-mtcgToken");
+                                    username2 = token2.substring(0, indexToken);
+
+                                }
+                                User authUser2 = new User(username2, "1234");
+                                String userDataJson = getRequestBodyAsList(in);
+                                PreparedStatement stmtPut = conn.prepareStatement("SELECT * FROM users WHERE username = ?");
+                                stmtPut.setString(1, authUser2.getUsername());
+
+                                ResultSet rs2 = stmtPut.executeQuery();
+
+                                JSONObject jsonObject = new JSONObject(userDataJson);
+                                List<String> userDatas = new ArrayList<>();
+                                Iterator<String> keys = jsonObject.keys();
+                                while (keys.hasNext()) {
+                                    String key = keys.next();
+                                    userDatas.add(jsonObject.getString(key));
+                                }
 
 
-                                out.println("HTTP/1.1 200 OK");
-                                out.println("Content-Type: text/html");
-                                out.println("");
+                                while (rs2.next()) {
 
-                                out.println("<html><body><h1>PUT has been successful</h1></body></html>");
-                                //User user = new User();
+                                    if (token2 != null) {
+                                        out.println("HTTP/1.1 200 OK");
+                                        out.println("Content-Type: application/json"); //Plain format
+                                        out.println("Connection: close");
 
-                                User user2 = new User("Gipsz Jakab", "123456789");
-                                out.println(user2.getUsername()); //Gipsz Jakab
-                                out.println(rest.put(user2)); //null
+
+                                        out.println();
+                                    } else {
+                                        out.println("HTTP/1.1 401 Unauthorized");
+                                        out.println("Content-Type: text/html");
+                                        out.println("");
+                                        out.println("<html><body><h1>401 Unauthorized</h1></body></html>");
+                                    }
+
+                                    out.println();
+                                    rest.editUser(userDatas, authUser2);
+                                    out.println(username2+" data edited.");
+                                }
 
 
                                 break;
@@ -450,11 +756,6 @@ public class EchoMultiServer {
                                 out.println("Content-Type: application/json");
                                 out.println("");
 
-                                /*out.println("<html><body><h1>DELETE has been successful</h1></body></html>");
-                                User user1 = new User("Gipsz Jakab", "1234");
-                                out.println(user1.getUsername()); //Gipsz Jakab
-                                out.println(rest.deleting(userId)); //ide egy ID kellene
-                                 */
                                 out.println(objectMapper.writeValueAsString(deleted));
 
 
@@ -473,22 +774,6 @@ public class EchoMultiServer {
                         clientSocket.close();
                     }
 
-
-
-
-                    //String path = "/";
-                    // path -> /users vagy /users
-                    //Rest<User> rest = endPoints.get("/users");
-
-
-
-
-                    //Thread.sleep(5000);
-                    /*if (".".equals(inputLine)) {
-                        out.println("bye");
-                        break;
-                    }
-                    out.println(inputLine);*/
                 }
 
                 in.close();
@@ -496,10 +781,7 @@ public class EchoMultiServer {
                 clientSocket.close();
 
             } catch (IOException | SQLException e) {
-                //LOG.debug(e.getMessage());
                 System.out.println(e.getMessage());
-                // } catch (InterruptedException e) {
-                //     System.out.println(e.getMessage());
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -561,33 +843,7 @@ public class EchoMultiServer {
         }
     }
 
-
-  /*                              while ((inputLine = in.readLine()) != null && !inputLine.isEmpty()) {
-
-    }
-    char[] buffer = new char[1024];
-    int read = in.read(buffer);
-    String userAsJson = new String(buffer, 0, read);
-    userAsJson = jsonToLowerCase(userAsJson);
-    //String userAsJson = in.readLine();
-    User user = objectMapper.readValue(userAsJson, User.class);
-*/
-
-
-    //generateToken
-
-
-
-
     public static void main(String[] args) {
-        // kell egy metódus, ami innen hivva ezt csinálja:
-        // 1. paraméterként kapja a játékos id-ját
-        // 2. az összes olyan kártyánál, ami a játékosnál van (user_id = játékos id), az in_deck-et átállítja false-ra -> UPDATE cards SET in_deck = false WHERE user_id = játékos id
-        // 3. létrehoz 4 kártyát random úgy, hogy a user_id = játékosé és az in_deck = true
-            // Card uj = Card.generateRandom()
-            // INSERT INTO cards (user_id, in_deck, name, damage, type) VALUES (játékos id, true, uj.getName(), uj.getDamage(), uj.getType())
-
-        // 4. visszaadja a játékost (és a 4 új kártyát)
 
         EchoMultiServer server = new EchoMultiServer();
         server.start(10001);

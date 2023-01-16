@@ -13,6 +13,7 @@ Deck o-- Card: Aggregation
 Deck "1...4"-- "1" Stack
 Market .. User
 Store .. User
+Trading .. User
 Battle .. "2" User
 
 
@@ -37,17 +38,9 @@ class User {
 
 class Market {
 
-    -packages: Package[]
-
-    +buyPackage(): void
-
-
 }
 class Store {
-    -cards: Card[]
 
-    +buyCard(): void
-    +sellCard(): void
 }
 class Deck {
 
@@ -58,11 +51,13 @@ class Deck {
 
 }
 class Card {
-
+    #id: String
     #name: String
     #damage: int
     #type: ElementType
     #monsterType: MonsterType
+    #cardtype: CardType
+    +generateCard(): Card
 
 }
 class MonsterCard {
@@ -106,8 +101,21 @@ enum MonsterType {
 }
 
 class Battle{
+ -player1: User
+ -player2: User
+ +fight(): void
+ +takeCard(): void
+ +Monsterfight(): int
+ +SpellFight(): int
 
-
+}
+class Trading{
+    -id: int
+    -cardtotrade: String
+    -minimumdamage: int
+    +getId():int
+    +getCardtotrade():String
+    getMinimumdamage():int
 }
 
 @enduml

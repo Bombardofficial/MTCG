@@ -27,6 +27,14 @@ public class Card {
         this.monsterType = monsterType;
 
     }
+    public Card(String id,String name, int damage, ElementType type ,MonsterType monsterType){
+        this.id = id;
+        this.name = name;
+        this.damage = damage;
+        this.type = type;
+        this.monsterType = monsterType;
+
+    }
     @JsonCreator
     public Card(@JsonProperty("id") String id, @JsonProperty("name") String name, @JsonProperty("damage") int damage){
         this.id = id;
